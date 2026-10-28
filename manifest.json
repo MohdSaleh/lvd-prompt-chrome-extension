@@ -1,0 +1,69 @@
+{
+  "manifest_version": 3,
+  "name": "LVD Compiler - Prompt Enhancer",
+  "version": "3.0.0",
+  "description": "Real-time LVD → LLM-native cognitive prompt intelligence inside ChatGPT, Meta AI, Claude, and Gemini. Tactile suggestion dock, atomic compiler, interactive dictionary explorer, and prompt engineering studio.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://chat.openai.com/*",
+    "https://chatgpt.com/*",
+    "https://*.openai.com/*",
+    "https://claude.ai/*",
+    "https://*.claude.ai/*",
+    "https://gemini.google.com/*",
+    "https://bard.google.com/*",
+    "https://meta.ai/*",
+    "https://*.meta.ai/*",
+    "https://www.meta.ai/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chat.openai.com/*",
+        "https://chatgpt.com/*",
+        "https://*.openai.com/*",
+        "https://claude.ai/*",
+        "https://*.claude.ai/*",
+        "https://gemini.google.com/*",
+        "https://bard.google.com/*",
+        "https://meta.ai/*",
+        "https://*.meta.ai/*",
+        "https://www.meta.ai/*"
+      ],
+      "js": [
+        "lvd-dictionary.js",
+        "sqlite-store.js",
+        "content.js"
+      ],
+      "css": [
+        "styles.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "LVD Compiler v2.0",
+    "default_popup": "popup.html"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icons/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
+}

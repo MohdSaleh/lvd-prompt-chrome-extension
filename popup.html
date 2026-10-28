@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LVD Compiler</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* ==========================================================================
+       LVD COMPILER — RADICAL MINIMALIST POPUP
+       Architectural Serenity • Zero Noise • Refined Proportions
+       ========================================================================== */
+    body {
+      width: 380px;
+      max-height: 560px;
+      margin: 0;
+      padding: 0;
+      font-family: var(--lvd-font);
+      background: var(--lvd-bg-root);
+      color: var(--lvd-text-primary);
+      overflow-x: hidden;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Minimal Header */
+    .app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px 12px 16px;
+      background: var(--lvd-bg-root);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-mark {
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
+      background: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #0d0e12;
+      font-size: 9.5px;
+      font-weight: 750;
+    }
+
+    .brand-title {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--lvd-text-primary);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .brand-ver {
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--lvd-text-muted);
+      font-family: var(--lvd-font-mono);
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--lvd-text-secondary);
+    }
+
+    .status-pulse {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #ffffff;
+    }
+
+    .status-indicator.disabled .status-pulse {
+      background: var(--lvd-text-dim);
+    }
+
+    /* Navigation Container */
+    .nav-container {
+      padding: 0 16px 10px 16px;
+      border-bottom: 1px solid var(--lvd-border-subtle);
+    }
+
+    .lvd-segmented-control {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    .lvd-segmented-item {
+      padding: 5px 0;
+      font-size: 11.5px;
+    }
+
+    /* Invisible telemetry elements for JS compatibility */
+    .metric-strip {
+      display: none;
+    }
+
+    /* Panels */
+    .tab-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .tab-panel {
+      display: none;
+      padding: 14px 16px;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .tab-panel.active {
+      display: flex;
+    }
+
+    /* PLAYGROUND */
+    .preset-chips {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .preset-chip {
+      font-size: 11px;
+      font-family: var(--lvd-font);
+      font-weight: 450;
+      background: transparent;
+      border: 1px solid var(--lvd-border-subtle);
+      color: var(--lvd-text-secondary);
+      padding: 3px 8px;
+      border-radius: var(--lvd-radius-xs);
+      cursor: pointer;
+      transition: all var(--lvd-transition-fast);
+      outline: none;
+    }
+
+    .preset-chip:hover {
+      border-color: var(--lvd-border-medium);
+      color: #ffffff;
+      background: var(--lvd-bg-surface-1);
+    }
+
+    .prompt-input-wrapper {
+      background: var(--lvd-bg-surface-1);
+      border: 1px solid var(--lvd-border-medium);
+      border-radius: var(--lvd-radius-xs);
+      padding: 10px;
+      transition: border-color var(--lvd-transition-fast);
+    }
+
+    .prompt-input-wrapper:focus-within {
+      border-color: var(--lvd-border-strong);
+    }
+
+    .prompt-textarea {
+      width: 100%;
+      min-height: 64px;
+      background: transparent;
+      border: none;
+      color: var(--lvd-text-primary);
+      font-family: var(--lvd-font);
+      font-size: 12.5px;
+      line-height: 1.55;
+      resize: vertical;
+      outline: none;
+    }
+
+    /* Subdued Clarity Strip */
+    .clarity-gauge-strip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 2px 0;
+      font-size: 10.5px;
+      color: var(--lvd-text-muted);
+    }
+
+    .clarity-bar-wrapper {
+      flex: 1;
+      height: 2px;
+      background: var(--lvd-bg-surface-2);
+      margin: 0 10px;
+      border-radius: 1px;
+      overflow: hidden;
+    }
+
+    .clarity-bar-fill {
+      height: 100%;
+      width: 98%;
+      background: #ffffff;
+      transition: width 0.2s ease;
+    }
+
+    .clarity-score-capsule {
+      font-size: 10.5px;
+      font-weight: 500;
+      color: var(--lvd-text-secondary);
+      font-family: var(--lvd-font-mono);
+    }
+
+    /* Diff Preview */
+    .diff-preview-card {
+      background: var(--lvd-bg-surface-1);
+      border: 1px solid var(--lvd-border-subtle);
+      border-radius: var(--lvd-radius-xs);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .diff-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--lvd-text-muted);
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .diff-body {
+      font-size: 12.5px;
+      line-height: 1.55;
+      color: var(--lvd-text-primary);
+      max-height: 90px;
+      overflow-y: auto;
+      word-break: break-word;
+    }
+
+    .playground-actions {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    /* DICTIONARY TAB */
+    .dict-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .search-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 10px;
+      font-size: 11px;
+      color: var(--lvd-text-muted);
+      pointer-events: none;
+    }
+
+    .search-input {
+      width: 100%;
+      background: var(--lvd-bg-surface-1);
+      border: 1px solid var(--lvd-border-medium);
+      border-radius: var(--lvd-radius-xs);
+      padding: 6px 26px 6px 26px;
+      font-size: 12px;
+      color: var(--lvd-text-primary);
+      outline: none;
+      font-family: var(--lvd-font);
+      transition: border-color var(--lvd-transition-fast);
+    }
+
+    .search-input:focus {
+      border-color: var(--lvd-border-strong);
+    }
+
+    .btn-search-clear {
+      position: absolute;
+      right: 7px;
+      background: transparent;
+      border: none;
+      color: var(--lvd-text-muted);
+      font-size: 11px;
+      cursor: pointer;
+      display: none;
+    }
+
+    .category-pills {
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+
+    .cat-btn {
+      white-space: nowrap;
+      font-size: 10.5px;
+      font-weight: 500;
+      font-family: var(--lvd-font);
+      padding: 3px 8px;
+      border-radius: var(--lvd-radius-xs);
+      background: transparent;
+      border: 1px solid var(--lvd-border-subtle);
+      color: var(--lvd-text-muted);
+      cursor: pointer;
+      transition: all var(--lvd-transition-fast);
+    }
+
+    .cat-btn:hover {
+      border-color: var(--lvd-border-medium);
+      color: var(--lvd-text-primary);
+    }
+
+    .cat-btn.active {
+      background: var(--lvd-bg-surface-2);
+      border-color: var(--lvd-border-strong);
+      color: #ffffff;
+      font-weight: 550;
+    }
+
+    .dict-list-container {
+      max-height: 220px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding-right: 2px;
+    }
+
+    .dict-term-card {
+      background: var(--lvd-bg-surface-1);
+      border: 1px solid var(--lvd-border-subtle);
+      border-radius: var(--lvd-radius-xs);
+      padding: 7px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      cursor: pointer;
+      transition: all var(--lvd-transition-fast);
+    }
+
+    .dict-term-card:hover {
+      border-color: var(--lvd-border-medium);
+      background: var(--lvd-bg-surface-2);
+    }
+
+    .dict-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .dict-term-name {
+      color: #ffffff;
+      font-weight: 550;
+      font-size: 12px;
+    }
+
+    .dict-cat-tag {
+      font-size: 9px;
+      font-weight: 500;
+      padding: 1px 4px;
+      border-radius: 2px;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--lvd-text-muted);
+      text-transform: uppercase;
+      font-family: var(--lvd-font-mono);
+    }
+
+    .dict-term-rephrase {
+      font-size: 11.5px;
+      color: var(--lvd-text-secondary);
+      line-height: 1.4;
+    }
+
+    .custom-term-toggle {
+      background: transparent;
+      border: 1px dashed var(--lvd-border-medium);
+      color: var(--lvd-text-secondary);
+      font-size: 11px;
+      padding: 6px;
+      border-radius: var(--lvd-radius-xs);
+      cursor: pointer;
+      transition: all var(--lvd-transition-fast);
+      text-align: center;
+    }
+
+    .custom-term-toggle:hover {
+      border-color: var(--lvd-border-strong);
+      color: #ffffff;
+    }
+
+    .custom-term-form {
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+      background: var(--lvd-bg-surface-1);
+      border: 1px solid var(--lvd-border-medium);
+      border-radius: var(--lvd-radius-xs);
+      padding: 8px;
+    }
+
+    .custom-term-form.active {
+      display: flex;
+    }
+
+    .custom-input {
+      background: var(--lvd-bg-root);
+      border: 1px solid var(--lvd-border-subtle);
+      border-radius: 3px;
+      padding: 5px 8px;
+      font-size: 11.5px;
+      color: var(--lvd-text-primary);
+      outline: none;
+    }
+
+    /* SETTINGS TAB */
+    .settings-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .settings-section-title {
+      font-size: 10.5px;
+      font-weight: 500;
+      color: var(--lvd-text-muted);
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 10px;
+      background: var(--lvd-bg-surface-1);
+      border: 1px solid var(--lvd-border-subtle);
+      border-radius: var(--lvd-radius-xs);
+    }
+
+    .setting-label-group {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .setting-name {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--lvd-text-primary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .setting-desc {
+      font-size: 10px;
+      color: var(--lvd-text-muted);
+    }
+
+    .platform-badge {
+      font-size: 9px;
+      padding: 1px 4px;
+      border-radius: 2px;
+      font-weight: 500;
+      font-family: var(--lvd-font-mono);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--lvd-text-secondary);
+    }
+
+    .range-control {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .range-slider {
+      accent-color: #ffffff;
+      cursor: pointer;
+    }
+    .range-value {
+      font-family: var(--lvd-font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      color: #ffffff;
+      min-width: 14px;
+      text-align: right;
+    }
+
+    /* ACTIVITY */
+    .activity-container {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .activity-list {
+      max-height: 220px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .activity-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 10px;
+      background: var(--lvd-bg-surface-1);
+      border: 1px solid var(--lvd-border-subtle);
+      border-radius: var(--lvd-radius-xs);
+      font-size: 11px;
+    }
+
+    .activity-term {
+      color: #ffffff;
+      font-weight: 550;
+    }
+
+    .activity-time {
+      font-size: 9.5px;
+      color: var(--lvd-text-muted);
+      font-family: var(--lvd-font-mono);
+    }
+
+    /* Footer */
+    .app-footer {
+      padding: 10px 16px;
+      background: var(--lvd-bg-root);
+      border-top: 1px solid var(--lvd-border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--lvd-text-muted);
+      margin-top: auto;
+    }
+
+    .footer-link {
+      background: transparent;
+      border: none;
+      color: var(--lvd-text-secondary);
+      font-size: 11px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      text-decoration: none;
+      transition: color var(--lvd-transition-fast);
+    }
+
+    .footer-link:hover {
+      color: #ffffff;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="app-header">
+    <div class="brand-group">
+      <div class="brand-mark">L</div>
+      <div class="brand-title">
+        <span>LVD Compiler</span>
+        <span class="brand-ver">3.2</span>
+      </div>
+    </div>
+    <div class="header-controls">
+      <div class="status-indicator" id="statusBadge" role="status" aria-live="polite">
+        <span class="status-pulse"></span>
+        <span id="statusText">Active</span>
+      </div>
+      <label class="lvd-switch" title="Toggle prompt enhancement">
+        <input type="checkbox" id="masterToggle" checked aria-label="Toggle prompt intelligence">
+        <span class="lvd-slider"></span>
+      </label>
+    </div>
+  </header>
+
+  <!-- Navigation -->
+  <div class="nav-container">
+    <nav class="lvd-segmented-control" role="tablist" aria-label="LVD Navigation">
+      <button class="nav-tab-btn lvd-segmented-item active" role="tab" aria-selected="true" aria-controls="tabPlayground" id="tabBtnPlayground" data-tab="tabPlayground">Studio</button>
+      <button class="nav-tab-btn lvd-segmented-item" role="tab" aria-selected="false" aria-controls="tabDict" id="tabBtnDict" data-tab="tabDict">Dictionary</button>
+      <button class="nav-tab-btn lvd-segmented-item" role="tab" aria-selected="false" aria-controls="tabSettings" id="tabBtnSettings" data-tab="tabSettings">Settings</button>
+      <button class="nav-tab-btn lvd-segmented-item" role="tab" aria-selected="false" aria-controls="tabActivity" id="tabBtnActivity" data-tab="tabActivity">Vault</button>
+    </nav>
+  </div>
+
+  <!-- Telemetry tokens for JS compatibility -->
+  <div class="metric-strip" aria-hidden="true">
+    <span id="metricDictSize">165</span>
+    <span id="metricPlatforms">4</span>
+    <span id="metricReplaced">0</span>
+  </div>
+
+  <!-- Content Panels -->
+  <main class="tab-content">
+    <!-- TAB 1: PLAYGROUND -->
+    <section class="tab-panel active" id="tabPlayground" role="tabpanel" aria-labelledby="tabBtnPlayground">
+      <div class="preset-chips">
+        <button class="preset-chip" type="button" data-text="I want the AI to learn from errors and think step by step to adapt the plan.">Learn & Adapt</button>
+        <button class="preset-chip" type="button" data-text="Please double-check this, verify every step, and describe the output.">Verify & Describe</button>
+        <button class="preset-chip" type="button" data-text="Look into this, find out what happened, and tell me what's wrong.">Investigate</button>
+      </div>
+
+      <div class="prompt-input-wrapper">
+        <textarea class="prompt-textarea" id="testPromptInput" placeholder="Enter prompt to observe live LVD compilation..."></textarea>
+      </div>
+
+      <!-- Minimal Clarity Bar -->
+      <div class="clarity-gauge-strip">
+        <span>Clarity</span>
+        <div class="clarity-bar-wrapper">
+          <div class="clarity-bar-fill" id="clarityBar"></div>
+        </div>
+        <div class="clarity-score-capsule" id="clarityScoreText">98% OPTIMAL</div>
+      </div>
+
+      <!-- In-Popup Suggestion Bar Preview -->
+      <div id="lvd-suggestion-bar" style="margin-bottom:0;"></div>
+
+      <!-- Diff Preview -->
+      <div class="diff-preview-card" id="diffCard" style="display:none;">
+        <div class="diff-header">
+          <span>Compiled Preview</span>
+          <span style="font-size:9.5px; font-weight:500; color:var(--lvd-text-muted);">Atomic Single-Pass</span>
+        </div>
+        <div class="diff-body" id="diffOutput"></div>
+      </div>
+
+      <div class="playground-actions">
+        <button class="lvd-btn-primary" id="btnCopyEnhanced" style="flex:1;">Copy Enhanced</button>
+        <button class="lvd-btn-secondary" id="btnUndoPrompt" style="display:none;" title="Undo replacement (Alt+Z)">Undo</button>
+        <button class="lvd-btn-secondary" id="btnClearPrompt">Clear</button>
+      </div>
+    </section>
+
+    <!-- TAB 2: DICTIONARY -->
+    <section class="tab-panel" id="tabDict" role="tabpanel" aria-labelledby="tabBtnDict">
+      <div class="dict-controls">
+        <div class="search-wrapper">
+          <span class="search-icon">/</span>
+          <input type="text" class="search-input" id="dictSearchInput" placeholder="Search trigger terms..." aria-label="Search dictionary terms">
+          <button class="btn-search-clear" id="btnSearchClear" title="Clear search">✕</button>
+        </div>
+        <div class="category-pills" id="categoryFilterBar" role="group" aria-label="Category Filters">
+          <button class="cat-btn active" data-cat="all">All</button>
+          <button class="cat-btn" data-cat="cognition">Cognition</button>
+          <button class="cat-btn" data-cat="verification">Verification</button>
+          <button class="cat-btn" data-cat="directive">Directives</button>
+          <button class="cat-btn" data-cat="analysis">Analysis</button>
+          <button class="cat-btn" data-cat="custom">Custom</button>
+        </div>
+      </div>
+
+      <div class="dict-list-container" id="dictList" role="list"></div>
+
+      <button class="custom-term-toggle" id="btnToggleCustomForm" type="button">
+        <span>+ Add custom rule</span>
+      </button>
+
+      <div class="custom-term-form" id="customTermForm">
+        <input type="text" class="custom-input" id="customTermKey" placeholder="Trigger phrase (e.g. speed up)">
+        <input type="text" class="custom-input" id="customTermVal" placeholder="LLM rephrase (e.g. optimize latency)">
+        <div style="display:flex; gap:6px;">
+          <button class="lvd-btn-primary" id="btnSaveCustomTerm" style="flex:1;">Save</button>
+          <button class="lvd-btn-secondary" id="btnCancelCustomTerm">Cancel</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: SETTINGS -->
+    <section class="tab-panel" id="tabSettings" role="tabpanel" aria-labelledby="tabBtnSettings">
+      <div class="settings-group">
+        <div class="settings-section-title">Platforms</div>
+        
+        <div class="setting-row">
+          <div class="setting-label-group">
+            <div class="setting-name">ChatGPT <span class="platform-badge">OpenAI</span></div>
+            <div class="setting-desc">chatgpt.com</div>
+          </div>
+          <label class="lvd-switch">
+            <input type="checkbox" id="platformChatGPT" checked aria-label="Enable for ChatGPT">
+            <span class="lvd-slider"></span>
+          </label>
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-label-group">
+            <div class="setting-name">Claude <span class="platform-badge">Anthropic</span></div>
+            <div class="setting-desc">claude.ai</div>
+          </div>
+          <label class="lvd-switch">
+            <input type="checkbox" id="platformClaude" checked aria-label="Enable for Claude">
+            <span class="lvd-slider"></span>
+          </label>
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-label-group">
+            <div class="setting-name">Gemini <span class="platform-badge">Google</span></div>
+            <div class="setting-desc">gemini.google.com</div>
+          </div>
+          <label class="lvd-switch">
+            <input type="checkbox" id="platformGemini" checked aria-label="Enable for Gemini">
+            <span class="lvd-slider"></span>
+          </label>
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-label-group">
+            <div class="setting-name">Meta AI <span class="platform-badge">Meta</span></div>
+            <div class="setting-desc">meta.ai</div>
+          </div>
+          <label class="lvd-switch">
+            <input type="checkbox" id="platformMeta" checked aria-label="Enable for Meta AI">
+            <span class="lvd-slider"></span>
+          </label>
+        </div>
+
+        <div class="settings-section-title" style="margin-top:6px;">Behavior</div>
+
+        <div class="setting-row">
+          <div class="setting-label-group">
+            <div class="setting-name">Max suggestions</div>
+            <div class="setting-desc">Pills shown per scan</div>
+          </div>
+          <div class="range-control">
+            <input type="range" class="range-slider" id="sliderMaxPills" min="3" max="10" value="6" aria-label="Max suggestions count">
+            <span class="range-value" id="valMaxPills">6</span>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-label-group">
+            <div class="setting-name">Keyboard shortcuts</div>
+            <div class="setting-desc"><span class="lvd-kbd">Tab</span> apply · <span class="lvd-kbd">Esc</span> dismiss</div>
+          </div>
+          <span class="lvd-badge">Active</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: PROMPT VAULT (SQLite) -->
+    <section class="tab-panel" id="tabActivity" role="tabpanel" aria-labelledby="tabBtnActivity">
+      <div class="activity-container">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span class="settings-section-title" style="margin-bottom:0;">Prompt Vault</span>
+            <span class="lvd-badge">SQLite DB</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button class="footer-link" id="btnExportVaultSql" title="Export standard SQLite .sql dump">Export .sql</button>
+            <button class="footer-link" id="btnClearHistory" title="Clear saved prompts">Clear</button>
+          </div>
+        </div>
+
+        <!-- Platform Filter Bar -->
+        <div class="category-pills" id="vaultFilterBar" role="group" aria-label="AI Platform Filters">
+          <button class="cat-btn active" data-platform="all">All</button>
+          <button class="cat-btn" data-platform="chatgpt">ChatGPT</button>
+          <button class="cat-btn" data-platform="claude">Claude</button>
+          <button class="cat-btn" data-platform="gemini">Gemini</button>
+          <button class="cat-btn" data-platform="meta">Meta AI</button>
+        </div>
+
+        <!-- Quick Search -->
+        <input type="text" class="search-input" id="vaultSearchInput" placeholder="Filter prompts in SQLite...">
+
+        <!-- Vault List Container -->
+        <div class="activity-list" id="activityList" role="log"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Minimal Footer -->
+  <footer class="app-footer">
+    <span>LVD Compiler</span>
+    <a href="options.html" target="_blank" class="footer-link">Studio Workbench ↗</a>
+  </footer>
+
+  <script src="lvd-dictionary.js?v=3.2"></script>
+  <script src="sqlite-store.js?v=3.2"></script>
+  <script src="popup.js?v=3.2"></script>
+</body>
+</html>

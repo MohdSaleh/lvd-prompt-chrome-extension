@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LVD Compiler — Prompt Studio</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* ==========================================================================
+       LVD COMPILER — RADICAL MINIMALIST STUDIO WORKBENCH
+       Quiet Editorial Precision • Zero Clutter • Architectural Layout
+       ========================================================================== */
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background: var(--lvd-bg-root);
+      color: var(--lvd-text-primary);
+      font-family: var(--lvd-font);
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .studio-shell {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 32px 32px 32px;
+    }
+
+    /* Full-Width Sleek Header */
+    .studio-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 0;
+      border-bottom: 1px solid var(--lvd-border-subtle);
+      position: sticky;
+      top: 0;
+      background: var(--lvd-bg-root);
+      z-index: 50;
+    }
+
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-mark {
+      width: 22px;
+      height: 22px;
+      border-radius: 4px;
+      background: #ffffff;
+      color: #0d0e12;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 750;
+    }
+
+    .brand-details h1 {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin: 0;
+      color: var(--lvd-text-primary);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .brand-details span.ver-tag {
+      font-size: 10px;
+      color: var(--lvd-text-muted);
+      font-family: var(--lvd-font-mono);
+      font-weight: 500;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Sub-header status bar */
+    .status-strip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 0 16px 0;
+      border-bottom: 1px solid var(--lvd-border-subtle);
+      font-size: 12px;
+      color: var(--lvd-text-secondary);
+    }
+
+    .status-strip-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--lvd-text-primary);
+    }
+
+    .status-strip-subtitle {
+      font-size: 12px;
+      color: var(--lvd-text-muted);
+      margin-left: 8px;
+    }
+
+    /* Panels */
+    .workspace-panel {
+      display: none;
+      flex-direction: column;
+      gap: 20px;
+      padding-top: 20px;
+      flex: 1;
+    }
+    .workspace-panel.active {
+      display: flex;
+    }
+
+    /* Presets Ribbon */
+    .presets-ribbon {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .presets-label {
+      font-size: 11px;
+      color: var(--lvd-text-muted);
+      font-weight: 500;
+      margin-right: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .preset-chip-large {
+      font-size: 11.5px;
+      font-family: var(--lvd-font);
+      font-weight: 450;
+      color: var(--lvd-text-secondary);
+      background: transparent;
+      border: 1px solid var(--lvd-border-subtle);
+      padding: 4px 10px;
+      border-radius: var(--lvd-radius-xs);
+      cursor: pointer;
+      transition: all var(--lvd-transition-fast);
+      outline: none;
+    }
+
+    .preset-chip-large:hover {
+      color: #ffffff;
+      border-color: var(--lvd-border-medium);
+      background: var(--lvd-bg-surface-1);
+    }
+
+    /* Dual-Pane Editor */
+    .editor-workbench {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border: 1px solid var(--lvd-border-medium);
+      border-radius: var(--lvd-radius-sm);
+      background: var(--lvd-bg-surface-1);
+      min-height: 400px;
+      overflow: hidden;
+    }
+
+    .editor-pane {
+      display: flex;
+      flex-direction: column;
+      min-height: 380px;
+    }
+
+    .editor-pane:first-child {
+      border-right: 1px solid var(--lvd-border-subtle);
+    }
+
+    .pane-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--lvd-border-subtle);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--lvd-text-muted);
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      user-select: none;
+    }
+
+    .studio-textarea {
+      flex: 1;
+      width: 100%;
+      min-height: 320px;
+      padding: 16px;
+      background: transparent;
+      border: none;
+      color: var(--lvd-text-primary);
+      font-family: var(--lvd-font);
+      font-size: 13.5px;
+      line-height: 1.65;
+      resize: none;
+      outline: none;
+    }
+
+    .studio-preview {
+      flex: 1;
+      width: 100%;
+      min-height: 320px;
+      padding: 16px;
+      background: transparent;
+      color: var(--lvd-text-primary);
+      font-family: var(--lvd-font);
+      font-size: 13.5px;
+      line-height: 1.65;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .pane-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 16px;
+      border-top: 1px solid var(--lvd-border-subtle);
+      font-size: 11px;
+      color: var(--lvd-text-muted);
+      font-family: var(--lvd-font-mono);
+      user-select: none;
+    }
+
+    /* Telemetry strip */
+    .telemetry-strip {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      padding: 12px 16px;
+      background: var(--lvd-bg-surface-1);
+      border: 1px solid var(--lvd-border-subtle);
+      border-radius: var(--lvd-radius-xs);
+      font-size: 11.5px;
+      color: var(--lvd-text-secondary);
+    }
+
+    .telemetry-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .telemetry-val {
+      font-weight: 600;
+      color: var(--lvd-text-primary);
+      font-family: var(--lvd-font-mono);
+    }
+
+    /* DICTIONARY VIEW */
+    .dict-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .dict-search-input {
+      flex: 1;
+      min-width: 260px;
+      max-width: 480px;
+      padding: 7px 12px;
+      background: var(--lvd-bg-surface-1);
+      border: 1px solid var(--lvd-border-medium);
+      border-radius: var(--lvd-radius-xs);
+      color: var(--lvd-text-primary);
+      font-family: var(--lvd-font);
+      font-size: 12px;
+      outline: none;
+      transition: border-color var(--lvd-transition-fast);
+    }
+
+    .dict-search-input:focus {
+      border-color: var(--lvd-border-strong);
+    }
+
+    .category-pills {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .cat-btn {
+      background: transparent;
+      border: 1px solid var(--lvd-border-subtle);
+      color: var(--lvd-text-secondary);
+      font-family: var(--lvd-font);
+      font-size: 11.5px;
+      padding: 4px 10px;
+      border-radius: var(--lvd-radius-xs);
+      cursor: pointer;
+      transition: all var(--lvd-transition-fast);
+    }
+
+    .cat-btn:hover {
+      color: #ffffff;
+      border-color: var(--lvd-border-medium);
+    }
+
+    .cat-btn.active {
+      background: var(--lvd-bg-surface-2);
+      border-color: var(--lvd-border-strong);
+      color: #ffffff;
+      font-weight: 550;
+    }
+
+    .table-container {
+      background: var(--lvd-bg-surface-1);
+      border: 1px solid var(--lvd-border-subtle);
+      border-radius: var(--lvd-radius-sm);
+      overflow-x: auto;
+      max-height: 520px;
+    }
+
+    .dict-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+    }
+
+    .dict-table th {
+      text-align: left;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--lvd-border-subtle);
+      color: var(--lvd-text-muted);
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      position: sticky;
+      top: 0;
+      background: var(--lvd-bg-surface-1);
+    }
+
+    .dict-table td {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--lvd-border-subtle);
+      vertical-align: middle;
+      color: var(--lvd-text-primary);
+    }
+
+    .dict-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    /* PLATFORMS */
+    .platform-card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .platform-box {
+      background: var(--lvd-bg-surface-1);
+      border: 1px solid var(--lvd-border-subtle);
+      border-radius: var(--lvd-radius-sm);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: border-color var(--lvd-transition-fast);
+    }
+
+    .platform-box:hover {
+      border-color: var(--lvd-border-medium);
+    }
+
+    .platform-box-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .platform-box-title {
+      font-size: 13.5px;
+      font-weight: 550;
+      color: #ffffff;
+    }
+
+    .platform-box p {
+      margin: 0;
+      font-size: 12px;
+      color: var(--lvd-text-secondary);
+      line-height: 1.5;
+    }
+
+    /* MODAL */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(6px);
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-backdrop.active {
+      display: flex;
+    }
+
+    .modal-dialog {
+      background: var(--lvd-bg-subtle);
+      border: 1px solid var(--lvd-border-medium);
+      border-radius: var(--lvd-radius-sm);
+      padding: 24px;
+      width: 100%;
+      max-width: 440px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: var(--lvd-shadow-floating);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin: 0;
+      color: #ffffff;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group label {
+      font-size: 11px;
+      color: var(--lvd-text-secondary);
+      font-weight: 500;
+    }
+
+    .form-control {
+      background: var(--lvd-bg-surface-1);
+      border: 1px solid var(--lvd-border-medium);
+      border-radius: var(--lvd-radius-xs);
+      padding: 8px 12px;
+      font-size: 12.5px;
+      color: var(--lvd-text-primary);
+      outline: none;
+      font-family: var(--lvd-font);
+    }
+
+    .form-control:focus {
+      border-color: var(--lvd-border-strong);
+    }
+
+    .modal-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    @media (max-width: 800px) {
+      .editor-workbench {
+        grid-template-columns: 1fr;
+      }
+      .editor-pane:first-child {
+        border-right: none;
+        border-bottom: 1px solid var(--lvd-border-subtle);
+      }
+      .studio-shell {
+        padding: 0 16px 24px 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="studio-shell">
+    <!-- Sleek Minimalist Header -->
+    <header class="studio-header">
+      <div class="brand-section">
+        <div class="brand-mark">L</div>
+        <div class="brand-details">
+          <h1>LVD Studio <span class="ver-tag">v3.2</span></h1>
+        </div>
+      </div>
+
+      <!-- Segmented Navigation Switcher -->
+      <nav class="lvd-segmented-control" role="tablist" aria-label="Studio Views">
+        <button class="nav-item lvd-segmented-item active" data-target="panelStudio" role="tab" aria-selected="true">Prompt Studio</button>
+        <button class="nav-item lvd-segmented-item" data-target="panelVault" role="tab" aria-selected="false">Prompt Vault (SQLite)</button>
+        <button class="nav-item lvd-segmented-item" data-target="panelDict" role="tab" aria-selected="false">Dictionary</button>
+        <button class="nav-item lvd-segmented-item" data-target="panelPlatforms" role="tab" aria-selected="false">Platforms</button>
+      </nav>
+
+      <div class="header-actions">
+        <button class="lvd-btn-secondary" id="btnCopyResult" title="Copy enhanced output to clipboard">Copy Output</button>
+        <button class="lvd-btn-primary" id="btnApplyAllStudio" title="Compile detected terms atomically">Compile Prompt</button>
+      </div>
+    </header>
+
+    <!-- Sub-header status bar -->
+    <div class="status-strip">
+      <div>
+        <span class="status-strip-title" id="pageTitle">Prompt Engineering Studio</span>
+        <span class="status-strip-subtitle" id="pageSubtitle">Test, optimize, and inspect cognitive prompt compilation in real time.</span>
+      </div>
+      <div style="font-family: var(--lvd-font-mono); font-size: 11px; color: var(--lvd-text-muted);">
+        Single-Pass Verified
+      </div>
+    </div>
+
+    <!-- PANEL 1: PROMPT STUDIO -->
+    <main class="workspace-panel active" id="panelStudio" role="tabpanel">
+      <!-- Minimalist Presets Ribbon -->
+      <div class="presets-ribbon">
+        <span class="presets-label">Presets</span>
+        <button class="preset-chip-large" data-text="I want the AI to learn from the errors and think step by step to adapt the plan, double-check every step, and verify the outcome.">Cognitive Multi-Step</button>
+        <button class="preset-chip-large" data-text="Audit this codebase, identify critical defects, validate assumptions, and prepare a plan to repair all errors.">Code Architecture Review</button>
+        <button class="preset-chip-large" data-text="Look into this failure, find out what happened, tell me what's wrong, and pressure test the fix.">Root Cause Investigation</button>
+        <button class="preset-chip-large" data-text="Simplify this explanation, break this down into clear parts, and make sure it is robust.">Clarity & Robustness</button>
+      </div>
+
+      <!-- Dual-Pane Minimalist Editor -->
+      <div class="editor-workbench">
+        <div class="editor-pane">
+          <div class="pane-header">
+            <span>Raw Prompt</span>
+            <span style="font-weight:400; color:var(--lvd-text-dim);">Input</span>
+          </div>
+          <textarea class="studio-textarea" id="studioRawInput" placeholder="Enter prompt to observe live LVD compilation..."></textarea>
+          <div class="pane-footer">
+            <span id="rawWordCount">0 words · 0 chars</span>
+            <span id="detectedCount">0 detected</span>
+          </div>
+        </div>
+
+        <div class="editor-pane">
+          <div class="pane-header">
+            <span>Compiled Output</span>
+            <span style="font-weight:400; color:var(--lvd-text-dim);">Atomic Non-Recursive</span>
+          </div>
+          <div class="studio-preview" id="studioPreviewOutput"></div>
+          <div class="pane-footer">
+            <span id="enhancedWordCount">0 words</span>
+            <span>Single-Pass Verified</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- In-situ Suggestion Bar Placement -->
+      <div style="margin-top: 4px;">
+        <div id="lvd-suggestion-bar"></div>
+      </div>
+
+      <!-- Minimalist Telemetry Strip -->
+      <div class="telemetry-strip">
+        <div class="telemetry-item">
+          <span>Tokens:</span>
+          <span class="telemetry-val" id="statTokens">~0</span>
+        </div>
+        <div class="telemetry-item">
+          <span>Detected:</span>
+          <span class="telemetry-val" id="statTermsDetected">0</span>
+        </div>
+        <div class="telemetry-item">
+          <span>Clarity:</span>
+          <span class="telemetry-val" id="statClarityScore">98%</span>
+        </div>
+        <div class="telemetry-item">
+          <span>Dictionary:</span>
+          <span class="telemetry-val" id="statTotalTerms">165 terms</span>
+        </div>
+      </div>
+    </main>
+
+    <!-- PANEL: PROMPT VAULT (SQLite) -->
+    <section class="workspace-panel" id="panelVault" role="tabpanel">
+      <!-- Toolbar -->
+      <div class="dict-toolbar">
+        <input type="text" class="dict-search-input" id="vaultStudioSearch" placeholder="Search prompts in SQLite...">
+        <div class="category-pills" id="vaultStudioFilterBar">
+          <button class="cat-btn active" data-platform="all">All</button>
+          <button class="cat-btn" data-platform="chatgpt">ChatGPT</button>
+          <button class="cat-btn" data-platform="claude">Claude</button>
+          <button class="cat-btn" data-platform="gemini">Gemini</button>
+          <button class="cat-btn" data-platform="meta">Meta AI</button>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="lvd-btn-secondary" id="btnExportVaultSqlStudio">Export .sql</button>
+          <button class="lvd-btn-secondary" id="btnExportVaultJsonStudio">Export JSON</button>
+          <button class="lvd-btn-ghost" id="btnClearVaultStudio" style="color:var(--lvd-rose-light);">Clear Vault</button>
+        </div>
+      </div>
+
+      <!-- Telemetry Strip for Vault -->
+      <div class="telemetry-strip" id="vaultStatsStrip">
+        <div class="telemetry-item">
+          <span>Total Prompts:</span>
+          <span class="telemetry-val" id="vaultTotalCount">0</span>
+        </div>
+        <div class="telemetry-item">
+          <span>ChatGPT:</span>
+          <span class="telemetry-val" id="vaultChatgptCount">0</span>
+        </div>
+        <div class="telemetry-item">
+          <span>Claude:</span>
+          <span class="telemetry-val" id="vaultClaudeCount">0</span>
+        </div>
+        <div class="telemetry-item">
+          <span>Gemini:</span>
+          <span class="telemetry-val" id="vaultGeminiCount">0</span>
+        </div>
+        <div class="telemetry-item">
+          <span>Meta AI:</span>
+          <span class="telemetry-val" id="vaultMetaCount">0</span>
+        </div>
+      </div>
+
+      <!-- Prompts Table Container -->
+      <div class="table-container">
+        <table class="dict-table">
+          <thead>
+            <tr>
+              <th style="width: 12%;">Platform</th>
+              <th style="width: 14%;">Time</th>
+              <th style="width: 48%;">Prompt Input</th>
+              <th style="width: 10%;">Metrics</th>
+              <th style="width: 16%; text-align: right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="vaultTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- PANEL 2: DICTIONARY MANAGER -->
+    <section class="workspace-panel" id="panelDict" role="tabpanel">
+      <div class="dict-toolbar">
+        <input type="text" class="dict-search-input" id="dictMgmtSearch" placeholder="Search trigger terms or rephrases...">
+        <div class="category-pills" id="dictMgmtCategoryBar">
+          <button class="cat-btn active" data-cat="all">All</button>
+          <button class="cat-btn" data-cat="cognition">Cognition</button>
+          <button class="cat-btn" data-cat="verification">Verification</button>
+          <button class="cat-btn" data-cat="directive">Directives</button>
+          <button class="cat-btn" data-cat="analysis">Analysis</button>
+          <button class="cat-btn" data-cat="custom">Custom</button>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="lvd-btn-secondary" id="btnExportDict">Export JSON</button>
+          <button class="lvd-btn-primary" id="btnAddRuleModal">+ Add Rule</button>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table class="dict-table">
+          <thead>
+            <tr>
+              <th style="width: 28%;">Trigger Term</th>
+              <th style="width: 54%;">LLM Rephrase</th>
+              <th style="width: 18%;">Category</th>
+            </tr>
+          </thead>
+          <tbody id="dictTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- PANEL 3: PLATFORMS -->
+    <section class="workspace-panel" id="panelPlatforms" role="tabpanel">
+      <div class="platform-card-grid">
+        <div class="platform-box">
+          <div class="platform-box-header">
+            <span class="platform-box-title">ChatGPT</span>
+            <label class="lvd-switch">
+              <input type="checkbox" id="platform-toggle-chatgpt" checked>
+              <span class="lvd-slider"></span>
+            </label>
+          </div>
+          <p>Full support for chatgpt.com and OpenAI interfaces with atomic injection.</p>
+        </div>
+
+        <div class="platform-box">
+          <div class="platform-box-header">
+            <span class="platform-box-title">Claude</span>
+            <label class="lvd-switch">
+              <input type="checkbox" id="platform-toggle-claude" checked>
+              <span class="lvd-slider"></span>
+            </label>
+          </div>
+          <p>Full support for claude.ai ProseMirror editor, Artifacts, and Canvas workspaces.</p>
+        </div>
+
+        <div class="platform-box">
+          <div class="platform-box-header">
+            <span class="platform-box-title">Google Gemini</span>
+            <label class="lvd-switch">
+              <input type="checkbox" id="platform-toggle-gemini" checked>
+              <span class="lvd-slider"></span>
+            </label>
+          </div>
+          <p>Full support for gemini.google.com rich input containers and multimodal prompts.</p>
+        </div>
+
+        <div class="platform-box">
+          <div class="platform-box-header">
+            <span class="platform-box-title">Meta AI</span>
+            <label class="lvd-switch">
+              <input type="checkbox" id="platform-toggle-meta" checked>
+              <span class="lvd-slider"></span>
+            </label>
+          </div>
+          <p>Full support for meta.ai and Llama-powered web interfaces.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Accessible Custom Rule Modal -->
+  <div class="modal-backdrop" id="ruleModal" role="dialog" aria-modal="true" aria-labelledby="modalHeading">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalHeading">Add Custom LVD Directive</h3>
+        <button class="lvd-btn-ghost" id="btnModalClose" aria-label="Close modal">✕</button>
+      </div>
+      <div class="form-group">
+        <label for="ruleTriggerInput">Trigger Word or Phrase</label>
+        <input type="text" class="form-control" id="ruleTriggerInput" placeholder="e.g. rewrite">
+      </div>
+      <div class="form-group">
+        <label for="ruleRephraseInput">Canonical LLM Rephrase</label>
+        <input type="text" class="form-control" id="ruleRephraseInput" placeholder="e.g. Refactor for clarity and conciseness.">
+      </div>
+      <div class="modal-actions">
+        <button class="lvd-btn-secondary" id="btnModalCancel">Cancel</button>
+        <button class="lvd-btn-primary" id="btnModalSave">Save Directive</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="lvd-dictionary.js?v=3.2"></script>
+  <script src="sqlite-store.js?v=3.2"></script>
+  <script src="options.js?v=3.2"></script>
+</body>
+</html>

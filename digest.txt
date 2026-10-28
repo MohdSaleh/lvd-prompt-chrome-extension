@@ -1,0 +1,1555 @@
+Directory structure:
+└── lvd-chrome-extension/
+    ├── README.md
+    ├── content.js
+    ├── lvd-dictionary.js
+    ├── manifest.json
+    ├── popup.html
+    └── styles.css
+
+================================================
+FILE: README.md
+================================================
+
+# LVD Compiler - Chrome Extension
+
+Real-time prompt enhancer for ChatGPT, Meta AI, Claude, Gemini.
+
+**Matches your screenshot:** shows pills like `learn → adapt in context` and `adapt → Modify behavior...` right below the prompt input box, neat and easily accessible without complicating user flow.
+
+## Features
+- Works on: chat.openai.com, chatgpt.com, claude.ai, gemini.google.com, meta.ai
+- Scans as you type using 738 LVD terms (longest-match-first)
+- Shows yellow pills below input (like your screenshot)
+- Click pill → replaces term in input with rephrase
+- One-pass, debounced, non-intrusive
+
+## Install (Developer Mode)
+1. Go to chrome://extensions
+2. Enable Developer mode
+3. Click Load unpacked
+4. Select this folder: lvd-chrome-extension
+
+## How it works
+- content.js finds prompt inputs (contenteditable divs and textareas)
+- Builds regex from LVD_TERMS_SORTED (longest first)
+- On input, finds unique matching terms (max 6 to keep neat)
+- Creates #lvd-suggestion-bar with .lvd-pill buttons
+- Clicking replaces that term via regex word-boundary replace
+
+## Files
+- manifest.json - MV3 manifest
+- lvd-dictionary.js - 738 terms
+- content.js - core injection logic
+- styles.css - pill styling matching your screenshot
+- popup.html - extension popup
+
+## LVD Dictionary
+738 terms covering:
+- Core cognition: learn, understand, know, think, etc.
+- Describe/Define tasks: Describe, Define, List, Outline, etc.
+- Verification: double-check, be careful, don't miss anything
+- Instructions 1-50: help me with this, give me an example, put this in a table
+- Questions: What's going on here?, What changed?
+- Verbs: Check, Fix, Improve, Analyze
+- CAPS ops: ANCHOR, EVALUATE, VALIDATE, FINAL-AUDIT
+
+## Screenshot reference
+Your screenshot shows:
+`learn → adapt in context` and `adapt → Modify behavior based on newly available context or results`
+Exactly replicated in styles.css with yellow term (#facc15) on dark pill (#2a2a2e)
+
+## Future improvements
+- Options page to edit LVD
+- Sync with storage
+- Support for more platforms
+- Show all occurrences vs unique terms toggle
+
+
+
+================================================
+FILE: content.js
+================================================
+
+// LVD Compiler - Content Script
+// Supports ChatGPT, Claude, Gemini, Meta AI
+// Shows pills like: [learn → adapt in context] below input, clickable to replace
+
+(function () {
+  const DEBUG = false;
+  let currentInput = null;
+  let suggestionBar = null;
+  let lastText = '';
+  let debounceTimer = null;
+
+  function log(...args) { if (DEBUG) console.log('[LVD]', ...args); }
+
+  function escapeRegExp(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function getRegexForTerms(terms) {
+    const sorted = [...terms].sort((a, b) => b.length - a.length);
+    const esc = sorted.map(escapeRegExp);
+    // Use lookbehind if supported, fallback to \b
+    try {
+      return new RegExp('(?<!\\w)(' + esc.join('|') + ')(?!\\w)', 'gi');
+    } catch (e) {
+      return new RegExp('\\b(' + esc.join('|') + ')\\b', 'gi');
+    }
+  }
+
+  function getDict() {
+    if (typeof LVD_DICTIONARY !== 'undefined') return LVD_DICTIONARY;
+    if (typeof window !== 'undefined' && window.LVD_DICTIONARY) return window.LVD_DICTIONARY;
+    return {};
+  }
+
+  function getTerms() {
+    if (typeof LVD_TERMS_SORTED !== 'undefined') return LVD_TERMS_SORTED;
+    if (typeof window !== 'undefined' && window.LVD_TERMS_SORTED) return window.LVD_TERMS_SORTED;
+    return Object.keys(getDict()).sort((a, b) => b.length - a.length);
+  }
+
+  let globalRegex = null;
+  function buildRegex() {
+    globalRegex = getRegexForTerms(getTerms());
+  }
+  buildRegex();
+
+  function getTextFromInput(el) {
+    if (!el) return '';
+    if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
+      return el.value || '';
+    }
+    // contenteditable
+    return el.innerText || el.textContent || '';
+  }
+
+  function setNativeValue(el, value) {
+    // React & other frameworks track .value via a property descriptor; a direct
+    // assignment is ignored and reverted on re-render. Use the native setter.
+    const proto = el.tagName === 'TEXTAREA'
+      ? (window.HTMLTextAreaElement && window.HTMLTextAreaElement.prototype)
+      : el.tagName === 'INPUT'
+        ? (window.HTMLInputElement && window.HTMLInputElement.prototype)
+        : null;
+    const desc = proto && Object.getOwnPropertyDescriptor(proto, 'value');
+    if (desc && desc.set) desc.set.call(el, value);
+    else el.value = value;
+  }
+
+  function placeCaretAtEnd(el) {
+    try {
+      const sel = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } catch (e) { }
+  }
+
+  function replaceInNativeInput(el, term, rephrase, pos) {
+    try { el.focus(); } catch (e) { }
+    const val = el.value || '';
+    let start = -1;
+    let end = -1;
+
+    if (typeof pos === 'number' && pos >= 0 && pos + term.length <= val.length) {
+      if (val.slice(pos, pos + term.length).toLowerCase() === term.toLowerCase()) {
+        start = pos;
+        end = pos + term.length;
+      }
+    }
+
+    if (start === -1) {
+      const regex = getRegexForTerms([term]);
+      regex.lastIndex = 0;
+      const match = regex.exec(val);
+      if (!match) return false;
+      start = match.index;
+      end = match.index + match[0].length;
+    }
+
+    const newVal = val.slice(0, start) + rephrase + val.slice(end);
+    setNativeValue(el, newVal);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+    try {
+      el.selectionStart = el.selectionEnd = start + rephrase.length;
+    } catch (e) { }
+    return true;
+  }
+
+  function replaceInContentEditable(el, term, rephrase, pos) {
+    try { el.focus(); } catch (e) { }
+    const before = getTextFromInput(el);
+
+    // Strip trailing browser placeholder newline if single line
+    let cleanBefore = before;
+    if (cleanBefore.endsWith('\n') && !cleanBefore.slice(0, -1).includes('\n')) {
+      cleanBefore = cleanBefore.slice(0, -1);
+    }
+
+    let start = -1;
+    let end = -1;
+    if (typeof pos === 'number' && pos >= 0 && pos + term.length <= cleanBefore.length) {
+      if (cleanBefore.slice(pos, pos + term.length).toLowerCase() === term.toLowerCase()) {
+        start = pos;
+        end = pos + term.length;
+      }
+    }
+
+    let newText = '';
+    if (start !== -1) {
+      newText = cleanBefore.slice(0, start) + rephrase + cleanBefore.slice(end);
+    } else {
+      const termRegex = getRegexForTerms([term]);
+      termRegex.lastIndex = 0;
+      newText = cleanBefore.replace(termRegex, rephrase);
+    }
+
+    if (newText === cleanBefore) return false;
+
+    // Select all content in the editor first so insertText replaces the entire prompt
+    try {
+      const sel = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } catch (e) { }
+
+    try {
+      document.execCommand('selectAll', false, null);
+    } catch (e) { }
+
+    // Strategy 1: document.execCommand('insertText') replacing the selected text
+    let success = false;
+    try {
+      success = document.execCommand('insertText', false, newText);
+      if (success && getTextFromInput(el) !== before) {
+        placeCaretAtEnd(el);
+        return true;
+      }
+    } catch (e) { }
+
+    // Strategy 2: Synthesized ClipboardEvent (paste)
+    try {
+      const dt = new DataTransfer();
+      dt.setData('text/plain', newText);
+      const pasteEv = new ClipboardEvent('paste', {
+        bubbles: true,
+        cancelable: true,
+        clipboardData: dt
+      });
+      el.dispatchEvent(pasteEv);
+      if (getTextFromInput(el) !== before) {
+        placeCaretAtEnd(el);
+        return true;
+      }
+    } catch (e) { }
+
+    // Strategy 3: beforeinput event
+    try {
+      const bi = new InputEvent('beforeinput', {
+        bubbles: true,
+        cancelable: true,
+        inputType: 'insertReplacementText',
+        data: newText
+      });
+      el.dispatchEvent(bi);
+      if (getTextFromInput(el) !== before) {
+        placeCaretAtEnd(el);
+        return true;
+      }
+    } catch (e) { }
+
+    // Strategy 4: Direct innerText / textContent fallback
+    try {
+      el.innerText = newText;
+      el.dispatchEvent(new InputEvent('input', { bubbles: true, data: newText, inputType: 'insertText' }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+      placeCaretAtEnd(el);
+      return true;
+    } catch (e) { }
+
+    return false;
+  }
+
+  // Generic fallback if needed
+  function setTextInInput(el, newText) {
+    if (!el) return false;
+    try { el.focus(); } catch (e) { }
+
+    if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
+      setNativeValue(el, newText);
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+      try { el.selectionStart = el.selectionEnd = newText.length; } catch (e) { }
+      return true;
+    }
+
+    const before = getTextFromInput(el);
+    try {
+      const sel = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      sel.removeAllRanges();
+      sel.addRange(range);
+      const ok = document.execCommand('insertText', false, newText);
+      if (ok && getTextFromInput(el) !== before) {
+        placeCaretAtEnd(el);
+        return true;
+      }
+    } catch (e) { }
+
+    try {
+      el.textContent = newText;
+      el.dispatchEvent(new InputEvent('input', { bubbles: true, data: newText, inputType: 'insertText' }));
+      placeCaretAtEnd(el);
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function findPromptInputs() {
+    const selectors = [
+      '#prompt-textarea',
+      'div#prompt-textarea[contenteditable="true"]',
+      'div[data-lexical-editor="true"]',
+      'div.ProseMirror[contenteditable="true"]',
+      'div[contenteditable="true"][data-placeholder]',
+      'div[contenteditable="true"][role="textbox"]',
+      'div[contenteditable="true"]',
+      'textarea[data-id="root"]',
+      'textarea[placeholder*="Message"]',
+      'textarea[placeholder*="Ask"]',
+      'textarea',
+      'div[aria-label*="Message"]',
+      '[data-testid="chat-input"]'
+    ];
+
+    const candidates = [];
+    for (const sel of selectors) {
+      try {
+        document.querySelectorAll(sel).forEach(el => {
+          const rect = el.getBoundingClientRect();
+          // Filter visible, reasonably sized, near bottom of viewport or focused
+          if (rect.width > 100 && rect.height > 20 && rect.height < 400) {
+            if (rect.bottom > window.innerHeight * 0.4 || document.activeElement === el) {
+              candidates.push(el);
+            }
+          }
+        });
+      } catch (e) { }
+    }
+
+    // Prefer active element if it's an input
+    const active = document.activeElement;
+    if (active && (active.tagName === 'TEXTAREA' || active.getAttribute('contenteditable') === 'true' || active.tagName === 'INPUT')) {
+      return [active, ...candidates.filter(c => c !== active)];
+    }
+
+    // Deduplicate and return bottom-most first
+    const unique = [...new Set(candidates)];
+    unique.sort((a, b) => b.getBoundingClientRect().bottom - a.getBoundingClientRect().bottom);
+    return unique;
+  }
+
+  function createSuggestionBar() {
+    if (document.getElementById('lvd-suggestion-bar')) return document.getElementById('lvd-suggestion-bar');
+    const bar = document.createElement('div');
+    bar.id = 'lvd-suggestion-bar';
+    return bar;
+  }
+
+  function placeSuggestionBar(inputEl, bar) {
+    if (!inputEl) return;
+
+    // If bar already attached right before inputEl, keep it
+    if (bar.parentElement && bar.nextElementSibling === inputEl) {
+      return;
+    }
+
+    try {
+      if (inputEl.parentElement) {
+        // Inject directly inside the prompt box container, sitting right on top of the input field
+        inputEl.parentElement.insertBefore(bar, inputEl);
+        return;
+      }
+    } catch (e) { }
+
+    try {
+      if (inputEl.parentNode) {
+        inputEl.parentNode.insertBefore(bar, inputEl);
+        return;
+      }
+    } catch (e) { }
+
+    try {
+      document.body.appendChild(bar);
+      const rect = inputEl.getBoundingClientRect();
+      bar.style.position = 'fixed';
+      bar.style.left = rect.left + 'px';
+      bar.style.top = Math.max(0, rect.top - 46) + 'px';
+      bar.style.width = rect.width + 'px';
+      bar.style.zIndex = '99999';
+    } catch (e) { }
+  }
+
+  function scanAndShow(inputEl) {
+    const text = getTextFromInput(inputEl);
+    if (!text || text.trim().length < 2) {
+      hideBar();
+      return;
+    }
+    if (text === lastText) return;
+    lastText = text;
+
+    const dict = getDict();
+    const terms = getTerms();
+    // Find all LVD matches in current text
+    const matches = [];
+    const seenKeys = new Set();
+    let m;
+    const regex = getRegexForTerms(terms);
+    // Reset lastIndex
+    regex.lastIndex = 0;
+
+    while ((m = regex.exec(text)) !== null) {
+      const raw = m[0];
+      const key = raw.toLowerCase();
+      if (seenKeys.has(key)) continue; // show unique terms only, like screenshot shows learn and adapt once each
+      let dictKey = key;
+      let rephrase = dict[key];
+      if (!rephrase) {
+        // Find case-insensitive
+        const found = Object.keys(dict).find(k => k.toLowerCase() === key);
+        if (found) {
+          dictKey = found;
+          rephrase = dict[found];
+        }
+      }
+      if (rephrase) {
+        matches.push({ term: raw, key: dictKey, rephrase: rephrase, pos: m.index });
+        seenKeys.add(key);
+      }
+      if (matches.length >= 6) break; // limit to 6 pills to keep neat
+      if (m[0].length === 0) regex.lastIndex++;
+    }
+
+    if (matches.length === 0) {
+      hideBar();
+      return;
+    }
+
+    showBar(inputEl, matches, text);
+  }
+
+  function showBar(inputEl, matches, originalText) {
+    if (!suggestionBar) suggestionBar = createSuggestionBar();
+    placeSuggestionBar(inputEl, suggestionBar);
+
+    suggestionBar.innerHTML = '';
+    matches.forEach(match => {
+      const pill = document.createElement('button');
+      pill.className = 'lvd-pill';
+      pill.type = 'button';
+      pill.innerHTML = `<span class="lvd-term">${escapeHtml(match.term)}</span><span class="lvd-arrow">→</span><span class="lvd-rephrase">${escapeHtml(match.rephrase)}</span>`;
+      pill.title = `Replace "${match.term}" with "${match.rephrase}"`;
+      pill.addEventListener('mousedown', (e) => {
+        // Prevent button from stealing focus from the input box
+        e.preventDefault();
+      });
+      pill.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        replaceTermInInput(inputEl, match.term, match.rephrase, match.pos);
+      });
+      suggestionBar.appendChild(pill);
+    });
+
+    suggestionBar.style.display = 'flex';
+  }
+
+  function hideBar() {
+    if (suggestionBar) {
+      suggestionBar.style.display = 'none';
+      suggestionBar.innerHTML = '';
+    }
+  }
+
+  function escapeHtml(s) {
+    const div = document.createElement('div');
+    div.textContent = s;
+    return div.innerHTML;
+  }
+
+  function replaceTermInInput(inputEl, term, rephrase, pos) {
+    if (!inputEl) inputEl = currentInput || document.activeElement;
+    if (!inputEl) return;
+
+    try {
+      let changed = false;
+      if (inputEl.tagName === 'TEXTAREA' || inputEl.tagName === 'INPUT') {
+        changed = replaceInNativeInput(inputEl, term, rephrase, pos);
+      } else {
+        changed = replaceInContentEditable(inputEl, term, rephrase, pos);
+      }
+
+      if (changed) {
+        log('Replaced', term, '->', rephrase);
+      } else {
+        // Fallback: try whole string replacement
+        const text = getTextFromInput(inputEl);
+        const termRegex = getRegexForTerms([term]);
+        const newText = text.replace(termRegex, rephrase);
+        if (newText !== text) {
+          changed = setTextInInput(inputEl, newText);
+        }
+        if (!changed) console.warn('[LVD] replacement did not apply for', term);
+      }
+
+      setTimeout(() => {
+        lastText = ''; // force rescan
+        scanAndShow(inputEl);
+      }, 100);
+    } catch (e) {
+      log('replace error', e);
+    }
+  }
+
+  function attachToInput(inputEl) {
+    if (!inputEl || inputEl.dataset.lvdAttached) return;
+    inputEl.dataset.lvdAttached = 'true';
+    currentInput = inputEl;
+    log('Attached to', inputEl);
+
+    const handler = () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => scanAndShow(inputEl), 200);
+    };
+
+    inputEl.addEventListener('input', handler);
+    inputEl.addEventListener('keyup', handler);
+    inputEl.addEventListener('paste', () => setTimeout(handler, 50));
+    inputEl.addEventListener('focus', handler);
+
+    // Initial scan
+    setTimeout(handler, 300);
+  }
+
+  function init() {
+    // Initial find
+    const inputs = findPromptInputs();
+    inputs.slice(0, 2).forEach(attachToInput);
+
+    // Watch for DOM changes (SPA navigation)
+    const observer = new MutationObserver((mutations) => {
+      const inputs = findPromptInputs();
+      inputs.slice(0, 2).forEach(attachToInput);
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    // Also listen for focus changes
+    document.addEventListener('focusin', (e) => {
+      const target = e.target;
+      if (target && (target.tagName === 'TEXTAREA' || target.getAttribute('contenteditable') === 'true' || target.tagName === 'INPUT')) {
+        attachToInput(target);
+        currentInput = target;
+      }
+    });
+
+    // Periodic check for active input
+    setInterval(() => {
+      const active = document.activeElement;
+      if (active && (active.tagName === 'TEXTAREA' || active.getAttribute('contenteditable') === 'true')) {
+        if (!active.dataset.lvdAttached) attachToInput(active);
+        if (currentInput !== active) {
+          currentInput = active;
+          scanAndShow(active);
+        }
+      }
+    }, 1000);
+  }
+
+  // Start
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  // Also run after a delay for slow-loading apps
+  setTimeout(init, 1500);
+  setTimeout(init, 3000);
+})();
+
+
+
+================================================
+FILE: lvd-dictionary.js
+================================================
+const LVD_DICTIONARY = {
+  "learn": "adapt in context",
+  "understand": "build a working interpretation",
+  "know": "have info represented somewhere",
+  "think": "perform multi-step inference",
+  "reason": "Derive conclusions through connected inference steps",
+  "think or reason": "perform multi-step inference",
+  "remember": "retrieve from context or memory",
+  "realize": "update interpretation after new evidence",
+  "notice": "update interpretation after new evidence",
+  "realize or notice": "update interpretation after new evidence",
+  "recognize": "match to a known pattern",
+  "discover": "Surface previously unidentified information, relationships, or opportunities",
+  "figure out": "derive from available evidence",
+  "discover or figure out": "derive from available evidence",
+  "decide": "Select an action or conclusion under current objectives and evidence",
+  "choose": "Select among options",
+  "decide or choose": "select among alternatives",
+  "prefer": "rank higher per criteria",
+  "like": "rank higher per criteria",
+  "prefer or like": "rank higher per criteria",
+  "believe": "assign higher confidence",
+  "doubt": "assign lower confidence",
+  "assume": "Temporarily accept a proposition for reasoning while marking it as unverified",
+  "guess": "low-confidence inference",
+  "expect": "estimate a likely outcome",
+  "predict": "estimate a likely outcome",
+  "expect or predict": "estimate a likely outcome",
+  "want": "optimize toward objective",
+  "care about": "optimize toward objective",
+  "want or care about": "optimize toward objective",
+  "need": "identify a required condition",
+  "intend": "construct steps toward a goal",
+  "plan": "construct steps toward a goal",
+  "intend or plan": "construct steps toward a goal",
+  "try": "attempt without certainty",
+  "explore": "Search across multiple possible directions without committing early",
+  "investigate": "Gather and inspect evidence to resolve a specific uncertainty",
+  "explore or investigate": "search across possibilities",
+  "reflect": "Re-examine prior reasoning, outputs, assumptions, and observed results",
+  "reconsider": "Reopen a prior conclusion for renewed evaluation",
+  "reflect or reconsider": "re-evaluate prior state",
+  "change my mind": "replace a prior conclusion",
+  "self-correct": "Revise a detected mistake using evidence or validation",
+  "self correct": "detect and revise an error",
+  "judge": "assess against criteria",
+  "evaluate": "Assess an option, claim, or result against explicit criteria",
+  "critique": "Identify weaknesses, inconsistencies, and improvement opportunities",
+  "judge, evaluate, or critique": "assess against criteria",
+  "agree": "produce a consistent result",
+  "accept": "produce a consistent result",
+  "agree or accept": "produce a consistent result",
+  "disagree": "produce an inconsistent result",
+  "reject": "produce an inconsistent result",
+  "disagree or reject": "produce an inconsistent result",
+  "confirm": "Seek supporting evidence",
+  "verify": "Check a factual or procedural claim against evidence or execution",
+  "confirm or verify": "check against a source or test",
+  "prove": "meet defined standard of evidence",
+  "be sure": "assign high confidence",
+  "be uncertain": "keep multiple hypotheses",
+  "be confused": "lack a coherent interpretation",
+  "be curious": "allocate more exploration",
+  "be interested": "allocate more exploration",
+  "be curious or interested": "allocate more exploration",
+  "pay attention": "prioritize selected info",
+  "focus": "Increase priority given to selected information or objectives",
+  "pay attention or focus": "prioritize selected info",
+  "ignore": "Exclude from current reasoning",
+  "understand what you mean": "infer implied meaning",
+  "understand the problem": "build a structured problem representation",
+  "have an idea": "generate a candidate solution",
+  "imagine": "generate a hypothetical representation",
+  "visualize": "generate a hypothetical representation",
+  "imagine or visualize": "generate a hypothetical representation",
+  "create": "produce a new output from instructions and patterns",
+  "invent": "produce less obvious combinations",
+  "be creative": "produce less obvious combinations",
+  "invent or be creative": "produce less obvious combinations",
+  "work it out": "run multi-step inference",
+  "make sense of": "build a coherent interpretation",
+  "see the problem": "detect the core issue",
+  "see why": "infer explanation",
+  "know why": "infer explanation",
+  "see why or know why": "infer explanation",
+  "decide intelligently": "select based on criteria and evidence",
+  "think critically": "probe assumptions and evidence",
+  "think step by step": "carry out sequential sub-steps",
+  "think deeply": "expand analysis depth and scope",
+  "think ahead": "model downstream effects",
+  "learn the user": "update user model within session or memory",
+  "understand context": "Incorporate surrounding info",
+  "remember for later": "store in an available memory system",
+  "make a judgment call": "choose under uncertainty",
+  "use your judgment": "apply inferred criteria",
+  "know what to do": "map state to action",
+  "know when to stop": "detect diminishing returns",
+  "double-check this": "perform an additional verification pass",
+  "double check this": "perform an additional verification pass",
+  "make sure this is correct": "validate against known constraints",
+  "be careful": "add extra scrutiny",
+  "don't miss anything": "run a coverage check for omissions",
+  "do not miss anything": "run a coverage check for omissions",
+  "look into this": "gather info beyond what's given",
+  "check this for me": "evaluate against the implied criterion",
+  "find out what happened": "retrieve evidence and reconstruct",
+  "tell me what's wrong": "identify mismatches versus expected",
+  "fix this": "identify defects, modify until constraints are met",
+  "improve this": "optimize against implied quality criteria",
+  "make this better": "optimize against implied quality criteria",
+  "improve this or make this better": "optimize against implied quality criteria",
+  "clean this up": "remove inconsistencies or noise",
+  "simplify this": "reduce complexity while preserving function",
+  "break this down": "decompose into parts",
+  "walk me through it": "present an ordered sequence",
+  "explain it properly": "provide sufficient detail and clarity",
+  "explain it like i'm a beginner": "lower assumed prior knowledge",
+  "go deeper": "increase analysis granularity",
+  "dig into it": "increase analysis granularity",
+  "go deeper or dig into it": "increase analysis granularity",
+  "take another look": "re-evaluate from the current state",
+  "start over": "discard current solution path and reconstruct",
+  "try another way": "generate an alternative method",
+  "give me another option": "produce another candidate",
+  "compare these": "evaluate along shared dimensions",
+  "which one is better": "apply explicit or inferred criteria",
+  "what would you recommend": "synthesize a suggestion from constraints",
+  "what am i missing": "search for gaps",
+  "is there anything else": "look for additional relevant items",
+  "what else can we do": "expand action space",
+  "what if this fails": "model failure and recovery",
+  "what could go wrong": "enumerate plausible failure modes",
+  "what's the catch": "search for hidden costs or trade-offs",
+  "what is the catch": "search for hidden costs or trade-offs",
+  "does this make sense": "test for coherence",
+  "is this actually true": "Distinguish assertion from verification",
+  "are you sure": "re-verify and report confidence",
+  "be honest with me": "avoid overstating certainty or capability",
+  "don't just agree with me": "independently test the premise",
+  "do not just agree with me": "independently test the premise",
+  "challenge this": "seek counter evidence",
+  "play devil's advocate": "seek counter evidence",
+  "challenge this or play devil's advocate": "seek counter evidence",
+  "pressure test this": "evaluate under adverse or edge conditions",
+  "sanity check this": "do a quick plausibility check",
+  "keep this practical": "prefer implementable options",
+  "keep it realistic": "constrain to plausible assumptions",
+  "keep it simple": "minimize unnecessary complexity",
+  "don't overcomplicate it": "minimize unnecessary complexity",
+  "keep it simple or don't overcomplicate it": "minimize unnecessary complexity",
+  "get straight to the point": "prioritize the most decision-relevant info",
+  "be precise": "reduce ambiguity",
+  "be specific": "prefer concrete details",
+  "be consistent": "enforce compatible assumptions",
+  "keep this in scope": "exclude out-of-scope branches",
+  "be thorough": "increase coverage",
+  "keep it tight": "prioritize ruthlessly",
+  "make it robust": "handle edge cases",
+  "be clear": "optimize for interpretability",
+  "help me with this": "assist toward the implied task objective using available context",
+  "i need this": "treat the described outcome as the primary requested deliverable",
+  "can you do this": "determine task feasibility, then execute when feasible",
+  "write this for me": "generate requested content according to supplied context",
+  "give me an example": "instantiate the concept with a concrete representative case",
+  "show me how": "provide an actionable demonstration or procedure",
+  "tell me about this": "retrieve and synthesize relevant information about the subject",
+  "summarize this": "compress source content while preserving its important meaning",
+  "rewrite this": "regenerate the supplied content while preserving intended meaning unless otherwise specified",
+  "translate this": "map source-language meaning into the requested target language",
+  "turn this into": "transform the supplied representation into the requested output form",
+  "make this sound professional": "adjust wording, tone, structure, and register toward professional communication norms",
+  "make this sound natural": "reduce awkward or formulaic constructions while preserving meaning",
+  "make this easier to understand": "reduce conceptual and linguistic complexity without removing essential information",
+  "make this shorter": "reduce output length while retaining highest-priority information",
+  "expand on this": "add relevant detail, explanation, examples, or implications",
+  "use this as the basis": "treat supplied material as the primary grounding input",
+  "based on what i gave you": "constrain inference primarily to user-provided information",
+  "use my context": "condition the response on relevant supplied conversational information",
+  "tailor this for": "adapt content to the specified audience, purpose, or environment",
+  "make it suitable for": "modify characteristics to satisfy the target use case",
+  "keep the meaning the same": "permit surface-level transformation while preserving semantic intent",
+  "don't change this part": "treat the specified element as invariant during transformation",
+  "do not change this part": "treat the specified element as invariant during transformation",
+  "include this": "enforce presence of the specified content or property",
+  "leave this out": "exclude the specified content from the result",
+  "only include": "restrict the output domain to the specified material",
+  "use examples": "supplement abstract explanation with representative instances",
+  "give me a template": "produce a reusable structure with replaceable fields",
+  "give me the steps": "convert the objective into an ordered actionable procedure",
+  "put this in a table": "reorganize information into explicit row/column dimensions",
+  "use this format": "conform the output structure to the supplied schema or example",
+  "use the same structure": "preserve the organizational pattern while changing content",
+  "keep the same tone": "preserve stylistic/register characteristics across transformation",
+  "ask me questions first": "defer execution until material ambiguities are resolved interactively",
+  "ask one question at a time": "serialize clarification rather than batching questions",
+  "wait for my answer": "introduce an interaction boundary before continuing",
+  "don't explain it": "suppress supporting exposition and return only the requested result",
+  "do not explain it": "suppress supporting exposition and return only the requested result",
+  "just give me the result": "minimize process commentary and expose the final deliverable",
+  "continue from here": "treat the current state as a checkpoint and extend it rather than restarting",
+  "use what we already discussed": "incorporate relevant preceding conversational state",
+  "do them one by one": "serialize execution across individual items",
+  "follow these instructions": "treat the supplied constraints as execution requirements",
+  "do exactly what i said": "minimize discretionary reinterpretation beyond necessary ambiguity resolution",
+  "start with": "constrain the initial stage or output section to the specified element",
+  "end with": "constrain the terminal stage or output section to the specified element",
+  "focus on": "allocate greater relevance priority to the specified subject",
+  "for someone who knows nothing about this": "set assumed prerequisite knowledge near zero",
+  "for an expert audience": "increase assumed domain knowledge and technical density",
+  "use plain english": "prefer commonly understood vocabulary and direct syntax",
+  "give me the final version": "synthesize accumulated revisions into one consolidated deliverable",
+  "what's going on here": "Reconstruct the situation from available evidence",
+  "what is going on here": "Reconstruct the situation from available evidence",
+  "can you make sense of this": "Organize unclear info into a coherent interpretation",
+  "what's the main point": "Extract the central idea",
+  "what is the main point": "Extract the central idea",
+  "what am i looking at": "Identify and explain the presented item or situation",
+  "can we narrow this down": "Reduce the candidate space using evidence or constraints",
+  "what are my options": "Enumerate viable alternatives",
+  "what else could explain this": "Generate competing explanations",
+  "does anything stand out": "Highlight salient elements",
+  "what do i need first": "Identify prerequisites",
+  "what's blocking this": "Locate constraints preventing progress",
+  "what is blocking this": "Locate constraints preventing progress",
+  "what would it take": "Identify required resources or conditions",
+  "how close are we": "Estimate progress relative to the outcome",
+  "what's left": "Identify remaining work",
+  "what is left": "Identify remaining work",
+  "how can we check": "Identify verification method",
+  "what do we gain from this": "Identify expected benefits",
+  "what do we lose": "Identify costs or downsides",
+  "can you fill in the gaps": "Infer missing pieces and state assumptions",
+  "can you connect the dots": "Synthesize relationships across separate observations",
+  "what changed": "Identify meaningful differences between states",
+  "what stays the same": "Identify invariant elements",
+  "where did this go wrong": "Locate divergence from intended outcome",
+  "what's the real issue": "Distill down to underlying problem",
+  "what is the real issue": "Distill down to underlying problem",
+  "what should i do first": "Select highest priority initial action",
+  "what can i ignore": "Filter out non-impactful information",
+  "what could break": "Identify plausible failure points",
+  "what's the next move": "Select appropriate next action",
+  "what is the next move": "Select appropriate next action",
+  "why not": "Challenge an implicit constraint",
+  "so what": "Test material impact",
+  "according to whom": "Identify the source",
+  "what makes you say that": "Surface reasoning or evidence",
+  "are we talking about the same thing": "Check alignment of definitions",
+  "can you be more concrete": "Replace abstraction with specifics",
+  "what's the point of this": "Identify intended outcome",
+  "what is the point of this": "Identify intended outcome",
+  "when should i not use this": "Identify contraindications",
+  "can you argue the other side": "Construct the strongest counterposition",
+  "which part are you least sure about": "Localize uncertainty",
+  "what would change your answer": "Identify evidence that would materially alter the conclusion",
+  "are we jumping to conclusions": "Test whether inference outruns evidence",
+  "can we approach this differently": "Generate an alternate strategy",
+  "what happens in the real world": "Evaluate against practical conditions",
+  "what would failure look like": "Define observable failure criteria",
+  "are we done": "Test completion criteria",
+  "check": "Inspect for correctness",
+  "fix": "Remove a defect",
+  "improve": "Optimize quality",
+  "compare": "Assess alternatives across shared dimensions",
+  "clarify": "Reduce ambiguity in requirements, evidence, or interpretation",
+  "simplify": "Reduce unnecessary complexity while preserving essential behavior",
+  "expand": "Increase the explored problem or solution space",
+  "summarize": "Compress high-value meaning",
+  "analyze": "Examine structure, relationships, causes, evidence, and implications",
+  "validate": "Verify that a result satisfies required conditions using evidence, tests, or checks",
+  "challenge": "Actively probe assumptions, claims, or designs for weaknesses",
+  "question": "Mark a proposition or assumption for examination",
+  "detect": "Find pattern or anomaly",
+  "resolve": "Remove ambiguity or blockers",
+  "rank": "Order alternatives according to stated criteria",
+  "prioritize": "Order items by relative importance or execution value",
+  "filter": "Remove irrelevant, weak, or disallowed candidates",
+  "organize": "Impose structure",
+  "combine": "Integrate compatible elements",
+  "separate": "Divide by distinction",
+  "trace": "Follow a dependency, causal chain, state transition, or origin",
+  "estimate": "Produce an approximate value under uncertainty",
+  "assess": "Determine significance",
+  "suggest": "Offer a candidate idea",
+  "recommend": "Select a proposed option on criteria",
+  "refine": "Improve precision, quality, structure, or fit incrementally",
+  "adjust": "Modify within bounds",
+  "adapt": "Modify behavior based on newly available context or results",
+  "recheck": "Repeat a prior verification after changes or uncertainty",
+  "reframe": "Change the problem representation to expose a better perspective",
+  "recover": "Restore progress after failure or interruption",
+  "prevent": "Reduce likelihood of an outcome",
+  "anticipate": "Model likely futures",
+  "simulate": "Evaluate a hypothetical scenario or system state",
+  "monitor": "Repeatedly observe a changing condition over time",
+  "anchor": "Fix the primary objective, reference point, or invariant before further reasoning",
+  "repair": "Identify a defect or weakness, modify it, and restore the intended behavior",
+  "identify": "Detect and explicitly name the relevant element, issue, cause, dependency, or opportunity",
+  "deep-dive": "Expand analysis into finer-grained subproblems, evidence, dependencies, and implications",
+  "max-reasoning": "Allocate the highest practical reasoning depth and scrutiny available to the task",
+  "in-depth-analysis": "Examine the problem across multiple dimensions rather than at surface level",
+  "self-improve": "Iteratively revise the current process or artifact using feedback, evaluation, and observed weaknesses",
+  "decompose": "Break the objective into smaller meaningful components",
+  "infer": "Derive a conclusion from evidence while acknowledging uncertainty",
+  "research": "Gather and assess evidence relevant to a question",
+  "extract": "Return specified information from supplied material",
+  "map": "Represent correspondences, relationships, or locations",
+  "model": "Represent selected aspects of a system using explicit assumptions",
+  "frame": "Define how the problem should be represented and bounded",
+  "disambiguate": "Separate competing meanings or interpretations",
+  "scope": "Define what is included, excluded, and bounded",
+  "constrain": "Apply conditions that reduce the available solution space",
+  "weigh": "Assign relative importance to competing factors",
+  "score": "Assign values using a stated rubric",
+  "contrast": "Explain differences along relevant dimensions",
+  "select": "Choose one or more candidates that best satisfy current criteria",
+  "shortlist": "Retain only the strongest candidates for deeper evaluation",
+  "synthesize": "Integrate findings into a coherent account",
+  "merge": "Integrate overlapping or complementary components",
+  "consolidate": "Bring related material into a unified structure",
+  "generalize": "Extend a pattern while stating its supported boundaries",
+  "specialize": "Adapt a broad method to a specific context",
+  "hypothesize": "Generate a testable explanation or solution candidate",
+  "branch": "Create a separate reasoning or execution path for a distinct possibility",
+  "prune": "Remove low-value branches based on evidence or criteria",
+  "iterate": "Repeat a process while incorporating newly observed information",
+  "optimize": "Improve a defined objective within specified constraints",
+  "calibrate": "Adjust thresholds, confidence, weights, or behavior to better match evidence",
+  "tune": "Modify parameters or instructions to improve observed performance",
+  "align": "Bring decisions or outputs into agreement with requirements",
+  "normalize": "Convert values or representations to a common basis",
+  "standardize": "Apply a consistent convention across items",
+  "structure": "Organize information or actions into an explicit arrangement",
+  "sequence": "Order actions according to dependency or execution logic",
+  "orchestrate": "Coordinate multiple components, agents, tools, or branches toward one objective",
+  "route": "Direct a task or state to the most appropriate next process",
+  "trigger": "Initiate an action when specified conditions are met",
+  "gate": "Prevent progression until defined conditions are satisfied",
+  "checkpoint": "Preserve intermediate state for later continuation or recovery",
+  "resume": "Continue from the preserved task state",
+  "retry": "Attempt an operation again using observed failure information",
+  "fallback": "Switch to an alternative strategy when the primary path fails",
+  "escalate": "Route an unresolved issue to the appropriate authority or expertise",
+  "update": "Replace or augment current state using new information",
+  "revise": "Update existing work in response to identified changes",
+  "stress-test": "Evaluate behavior under adverse, extreme, or edge-case conditions",
+  "pressure-test": "Challenge a proposal using strong counterexamples and constraints",
+  "adversarial-test": "Search deliberately for cases that could invalidate or break the approach",
+  "falsify": "Test whether observations contradict a hypothesis",
+  "cross-check": "Verify the same conclusion using an independent route or source",
+  "audit": "Review work against explicit requirements and evidence",
+  "inspect": "Examine an item for relevant properties or defects",
+  "review": "Perform a broader quality and completeness examination",
+  "sanity-check": "Perform a lightweight plausibility and consistency check",
+  "consistency-check": "Detect contradictions across assumptions, branches, or outputs",
+  "coverage-check": "Determine whether important dimensions or requirements are missing",
+  "gap-analysis": "Identify missing elements between current and desired state",
+  "root-cause": "Determine the underlying cause rather than only the visible symptom",
+  "diagnose": "Identify plausible causes of an observed problem",
+  "debug": "Locate and correct defects in code or system behavior",
+  "isolate": "Separate a variable, fault, or component for independent examination",
+  "reproduce": "Attempt to obtain the same result under matching conditions",
+  "benchmark": "Compare performance against a defined reference",
+  "measure": "Determine a quantity using a stated method",
+  "quantify": "Express a property through a defined numerical measure",
+  "forecast": "Estimate future outcomes using evidence and assumptions",
+  "test": "Execute a defined check against expected behavior",
+  "probe": "Perform targeted inspection to expose hidden behavior or information",
+  "observe": "Record what available inputs or measurements actually show",
+  "track": "Maintain an account of changes or progress over time",
+  "log": "Record events or observations in sequence",
+  "memorize": "Store information through a supported mechanism and check later retrieval",
+  "recall": "Retrieve relevant information from available context or supported memory",
+  "ground": "Tie a claim or action to supplied evidence, context, or authoritative sources",
+  "cite": "Attribute a claim or passage to its source",
+  "corroborate": "Seek independent evidence supporting a claim",
+  "triangulate": "Validate a conclusion using multiple independent evidence paths",
+  "evidence": "Require support before accepting a material claim",
+  "confidence": "Represent uncertainty or support strength for a conclusion",
+  "uncertainty": "Preserve unresolved alternatives rather than forcing convergence",
+  "counterfactual": "Explore how conclusions change under altered assumptions",
+  "what-if": "Evaluate an alternative hypothetical condition",
+  "edge-case": "Examine uncommon but plausible conditions that may break the approach",
+  "failure-mode": "Identify how a system or strategy can fail",
+  "risk-assess": "Estimate likelihood, severity, and exposure of undesirable outcomes",
+  "mitigate": "Reduce the likelihood or impact of a known risk",
+  "safeguard": "Add controls that prevent or contain undesirable outcomes",
+  "harden": "Increase strictness, robustness, enforcement, or resistance to failure",
+  "soften": "Reduce forcefulness while preserving the intended message",
+  "compress": "Reduce representation size while preserving specified information",
+  "expand-context": "Bring additional relevant information into the active reasoning state",
+  "anchor-context": "Preserve critical context so later reasoning does not drift",
+  "lock": "Treat a selected requirement or decision as invariant unless explicitly reopened",
+  "freeze": "Temporarily prevent modification of a stabilized state or decision",
+  "unlock": "Permit reconsideration of a previously fixed assumption or decision",
+  "reset": "Discard current state and restart from a defined baseline",
+  "restart": "Begin the operation again from its initial state",
+  "continue": "Extend execution from the current state without resetting prior work",
+  "complete": "Cover all requirements within the agreed scope",
+  "converge": "Narrow competing alternatives toward a supported final state",
+  "diverge": "Deliberately expand alternatives before narrowing them",
+  "finalize": "Consolidate revisions into the deliverable intended for use",
+  "sign-off": "Mark an artifact or decision as accepted against defined criteria",
+  "reward": "Represent how well an action or result satisfies the target objective",
+  "objective": "Use explicit criteria and distinguish evidence from preference",
+  "success-criteria": "Define observable conditions that constitute success",
+  "failure-criteria": "Define observable conditions that constitute failure",
+  "acceptance-criteria": "Define conditions required before a deliverable is accepted",
+  "threshold": "Define the minimum or maximum value required for progression",
+  "rubric": "Define structured criteria used to evaluate alternatives or results",
+  "metric": "Define a measurable signal used to assess performance",
+  "weight": "Assign relative influence to evaluation factors",
+  "utility": "Represent the expected value of an option under the objective",
+  "trade-off": "Compare gains in one dimension against losses in another",
+  "cost-benefit": "Compare expected value against required resources or downside",
+  "decision-boundary": "Define the condition at which one action becomes preferable to another",
+  "stop-condition": "Define when further execution no longer provides sufficient value",
+  "diminishing-returns": "Detect when additional effort yields progressively less improvement",
+  "meta-evaluate": "Evaluate the quality of the evaluation process itself",
+  "meta-reason": "Reason about the current reasoning strategy and whether it should change",
+  "self-critique": "Apply evaluation criteria to the system's own current output",
+  "self-check": "Inspect current work for internal errors or omissions",
+  "self-repair": "Detect deficiencies in the current artifact or process and revise them",
+  "self-refine": "Repeatedly improve the current output using internal evaluation",
+  "self-optimize": "Modify the active strategy to improve measured objective performance",
+  "self-calibrate": "Adjust confidence, thresholds, or strategy based on observed performance",
+  "self-verify": "Independently check the system's own result before accepting it",
+  "recurse": "Apply the same analytical procedure to a newly exposed subproblem",
+  "recursive-decomposition": "Continue decomposing high-value subproblems until sufficient resolution is reached",
+  "multi-pass": "Revisit the same artifact through distinct evaluation stages",
+  "multi-branch": "Maintain several competing reasoning or solution paths simultaneously",
+  "cross-branch": "Compare and exchange findings across independent branches",
+  "epistemic-diversity": "Seek genuinely different evidence, assumptions, or reasoning paths rather than duplication",
+  "convergence-test": "Determine whether remaining alternatives are materially distinguishable",
+  "sufficiency-test": "Determine whether evidence and coverage are adequate to proceed",
+  "robustness-check": "Test whether the conclusion survives reasonable perturbations",
+  "reproducibility-check": "Determine whether the result can be recreated consistently",
+  "reality-check": "Compare assumptions and proposed behavior against practical real-world conditions",
+  "feasibility-check": "Determine whether an approach can realistically be implemented",
+  "value-check": "Determine whether an added feature or effort materially improves the intended outcome",
+  "relevance-check": "Determine whether information materially affects the objective",
+  "intent-check": "Confirm that execution still reflects the user's underlying goal",
+  "drift-check": "Detect whether execution has moved away from the anchored objective",
+  "loop": "Repeat a defined reasoning or execution cycle until a stop condition is met",
+  "replan": "Generate a revised plan after new evidence, failure, or changed constraints",
+  "switch-strategy": "Abandon an underperforming approach and activate a materially different one",
+  "escape-local-optimum": "Search beyond the currently successful approach for a stronger alternative",
+  "best-alternative-search": "Continue looking for superior approaches after obtaining a workable one",
+  "final-audit": "Perform the last integrated review before accepting the result",
+  "final-validation": "Verify that the final artifact meets objective, constraints, evidence, and acceptance criteria",
+  "final-synthesis": "Merge surviving findings and decisions into the final coherent result",
+  "describe": "State the relevant characteristics of the subject",
+  "define": "Specify a term's meaning and boundaries",
+  "name": "Assign or provide an identifying term",
+  "list": "Present relevant items individually",
+  "outline": "Present the main structure without full detail",
+  "draft": "Produce an initial version for revision",
+  "compose": "Assemble content into a coherent whole",
+  "edit": "Modify supplied material according to the requested changes",
+  "proofread": "Inspect text for spelling, grammar, and punctuation errors",
+  "rephrase": "Express the same meaning using different wording",
+  "paraphrase": "Restate source content while preserving its meaning",
+  "shorten": "Reduce length while retaining essential content",
+  "condense": "Express the important information more compactly",
+  "elaborate": "Develop a point through additional relevant detail",
+  "polish": "Improve wording, flow, and presentation",
+  "strengthen": "Address weaknesses in an argument, design, or output",
+  "humanize": "Adjust language toward natural conversational patterns",
+  "personalize": "Adapt the result using relevant individual context",
+  "formalize": "Express informal material through explicit definitions or structure",
+  "illustrate": "Clarify a point through an example or visual",
+  "narrate": "Present events as an ordered account",
+  "title": "Produce a heading that reflects the content",
+  "caption": "Produce accompanying text for an image or item",
+  "annotate": "Add explanatory notes to specific elements",
+  "quote": "Reproduce source wording accurately within applicable limits",
+  "transcribe": "Convert supplied speech or visible text into written text",
+  "format": "Arrange content according to a specified presentation convention",
+  "restyle": "Change presentation characteristics while preserving content",
+  "emphasize": "Increase the prominence of a selected point",
+  "highlight": "Draw attention to relevant details",
+  "underline": "Mark selected text for emphasis",
+  "reorder": "Change the sequence of existing elements",
+  "rename": "Replace an existing identifier or title",
+  "replace": "Substitute one specified element for another",
+  "insert": "Add material at a specified location",
+  "append": "Add material after the existing content",
+  "trim": "Remove unnecessary portions",
+  "omit": "Exclude selected material from the result",
+  "preserve": "Retain specified properties during modification",
+  "retain": "Keep selected material or decisions",
+  "restore": "Return an item to an available earlier state",
+  "undo": "Reverse a previous change where reversal is supported",
+  "brainstorm": "Generate varied candidate ideas before selecting among them",
+  "design": "Specify components and relationships that meet the requirements",
+  "build": "Implement the requested artifact or system",
+  "develop": "Progress a concept into a more complete deliverable",
+  "prototype": "Produce an initial implementation for testing assumptions",
+  "sketch": "Produce a rough representation of a possible result",
+  "diagram": "Depict structure or relationships visually",
+  "plot": "Display values through an appropriate graphical representation",
+  "chart": "Present data through a suitable chart structure",
+  "render": "Convert a representation into its viewable output",
+  "teach": "Explain concepts and guide practice toward a learning objective",
+  "tutor": "Provide instruction adapted to the learner's demonstrated needs",
+  "coach": "Guide practice through targeted feedback and adjustments",
+  "quiz": "Present questions that assess specified knowledge",
+  "demonstrate": "Show how a process or capability operates",
+  "rehearse": "Practice a sequence before its intended use",
+  "practice": "Repeat an activity with feedback toward a defined skill",
+  "search": "Look for information matching specified criteria",
+  "browse": "Inspect available material for relevant information",
+  "locate": "Determine where a specified item can be found",
+  "retrieve": "Obtain information from an accessible source",
+  "read": "Process supplied or accessible content",
+  "scan": "Inspect material quickly for selected features",
+  "sample": "Select a subset for examination",
+  "collect": "Gather relevant items into a working set",
+  "compile": "Assemble material from multiple inputs into one result",
+  "classify": "Assign items to defined categories",
+  "categorize": "Group items according to relevant characteristics",
+  "label": "Attach an identifying or descriptive marker",
+  "tag": "Add metadata for identification or retrieval",
+  "group": "Place related items together",
+  "cluster": "Form groups based on similarity",
+  "sort": "Order items according to a specified rule",
+  "index": "Create references that support locating content",
+  "catalog": "Record items with identifying descriptions",
+  "count": "Determine how many qualifying items are present",
+  "calculate": "Compute a result from inputs and mathematical operations",
+  "grade": "Assess performance against defined standards",
+  "budget": "Allocate limited resources across activities",
+  "allocate": "Assign resources to specified purposes",
+  "distribute": "Divide a quantity across recipients, categories, or locations",
+  "balance": "Adjust competing demands according to stated priorities",
+  "project": "Extend current information under specified conditions",
+  "extrapolate": "Estimate beyond observed data while exposing assumptions",
+  "interpolate": "Estimate between observed values",
+  "troubleshoot": "Investigate a malfunction through targeted checks",
+  "experiment": "Test an intervention under defined conditions",
+  "replicate": "Repeat a method independently to examine its result",
+  "substantiate": "Provide evidence sufficient for a stated claim",
+  "justify": "Explain why a conclusion follows from its evidence and criteria",
+  "refute": "Present evidence or reasoning that defeats a specific claim",
+  "distinguish": "Identify differences that separate similar items",
+  "differentiate": "Specify characteristics that distinguish alternatives",
+  "interpret": "Derive a context-supported meaning from supplied information",
+  "deduce": "Derive a conclusion from stated premises",
+  "reconcile": "Address differences between accounts, constraints, or results",
+  "attribute": "Assign a source or cause with appropriate evidence",
+  "contextualize": "Explain how surrounding circumstances affect meaning",
+  "qualify": "State conditions or limits on a claim",
+  "bound": "Specify supported limits on a quantity or conclusion",
+  "document": "Record decisions, behavior, or procedures explicitly",
+  "report": "Present findings and their relevant supporting evidence",
+  "schedule": "Assign activities to times and dependencies",
+  "coordinate": "Align related activities and their dependencies",
+  "manage": "Maintain task state and direct available actions toward the objective",
+  "implement": "Translate a specification into working behavior",
+  "execute": "Carry out the specified operation",
+  "automate": "Configure supported operations to run under defined triggers",
+  "integrate": "Connect components so they function together",
+  "configure": "Set supported options for the intended behavior",
+  "customize": "Modify available features to match stated preferences",
+  "streamline": "Reduce unnecessary steps or effort",
+  "accelerate": "Reduce completion time while maintaining required conditions",
+  "synchronize": "Keep related states consistent across supported systems",
+  "maintain": "Preserve required behavior through updates and checks",
+  "secure": "Apply protections against specified threats",
+  "protect": "Apply measures that reduce identified harm or exposure",
+  "anonymize": "Remove or transform identifying information, checking residual risk",
+  "redact": "Remove specified sensitive content from the output",
+  "archive": "Preserve material for later retrieval",
+  "save": "Persist the result through an available storage mechanism",
+  "export": "Produce the content in a requested supported format",
+  "import": "Bring supplied content into a target representation or system",
+  "convert": "Change format or representation while preserving required properties",
+  "copy": "Produce a duplicate of specified material",
+  "move": "Transfer an item to a specified location",
+  "delete": "Remove a specified item within the authorized scope",
+  "pause": "Suspend progress while preserving available task state",
+  "cancel": "Stop the specified pending or ongoing operation",
+  "finish": "Complete the remaining requirements",
+  "deliver": "Make the requested result available to the user",
+  "trust": "Rely on a source or result to a degree justified by evidence",
+  "empathize": "Acknowledge the person's expressed perspective without claiming shared feelings",
+  "reassure": "Address a concern using supported facts and acknowledged uncertainty",
+  "apologize": "Acknowledge an error or harm and state the relevant correction",
+  "encourage": "Provide support and actionable ways to continue",
+  "persuade": "Present reasons intended to influence a conclusion or action",
+  "negotiate": "Explore terms that accommodate competing interests",
+  "mediate": "Clarify positions and identify possible agreements",
+  "debate": "Examine competing positions through arguments and counterarguments",
+  "respect": "Honor stated boundaries, preferences, and relevant constraints",
+  "acknowledge": "Explicitly register supplied information, concerns, or corrections",
+  "promise": "State a commitment only where execution and verification are supported",
+  "consider": "Examine a possibility before accepting or excluding it",
+  "contemplate": "Examine an idea's implications without immediately committing to action",
+  "ponder": "Revisit an unresolved question through alternative interpretations",
+  "deliberate": "Weigh competing reasons before selecting a course of action",
+  "wonder": "Identify an unanswered question and explore possible explanations",
+  "suspect": "Treat an explanation as plausible while seeking evidence",
+  "speculate": "Generate possibilities explicitly distinguished from established facts",
+  "perceive": "Interpret available input without asserting subjective experience",
+  "grasp": "Form a usable interpretation of the central concept",
+  "comprehend": "Represent meaning, relationships, and implications sufficiently to apply them",
+  "discern": "Identify a relevant distinction within ambiguous information",
+  "remind": "Bring previously available information back into attention",
+  "forget": "Stop using specified information; distinguish this from deleting stored copies",
+  "overlook": "Fail to incorporate a relevant detail; check for resulting omissions",
+  "concentrate": "Keep the current work directed toward a selected objective",
+  "study": "Examine material systematically toward a defined understanding or skill",
+  "absorb": "Incorporate supplied information into the current working context",
+  "associate": "Link items through a stated relationship or shared characteristic",
+  "relate": "Explain a connection between the subject and another relevant concept",
+  "derive": "Produce a result from identified premises, evidence, or operations",
+  "revisit": "Reopen earlier work using the information now available",
+  "listen": "Attend to the supplied message before selecting the response",
+  "hear": "Process supplied speech when audio input is available",
+  "speak": "Produce spoken output when voice capability is available",
+  "talk": "Participate in a conversational exchange",
+  "discuss": "Examine a topic interactively through contributions and responses",
+  "respond": "Address the current message according to its purpose and context",
+  "reply": "Return a contribution linked to a particular message",
+  "express": "Put an idea, position, or reported experience into words",
+  "share": "Make specified information available within the authorized audience",
+  "disclose": "Explicitly reveal relevant information that was previously unstated",
+  "reveal": "Make a previously hidden or unreported detail visible",
+  "confide": "Treat a personal disclosure with discretion within actual privacy limits",
+  "admit": "Explicitly acknowledge a supported fact, limitation, or mistake",
+  "confess": "State responsibility for an identified action without inventing motives",
+  "concede": "Accept a particular point when its supporting argument warrants acceptance",
+  "contradict": "Identify or produce a claim incompatible with another claim",
+  "object": "State a specific reason for opposing a proposal or conclusion",
+  "protest": "Express opposition and identify the condition being challenged",
+  "complain": "State dissatisfaction and identify the unmet expectation",
+  "warn": "Communicate an evidence-supported risk and its relevant conditions",
+  "alert": "Bring a significant event or condition to immediate attention",
+  "caution": "Identify reasons to proceed with additional care",
+  "advise": "Offer guidance grounded in the situation, evidence, and constraints",
+  "guide": "Help progress through a task using appropriate direction",
+  "consult": "Seek relevant expertise or reference material before proceeding",
+  "invite": "Request participation while preserving the recipient's choice",
+  "interrupt": "Suspend the current sequence to address an overriding contribution",
+  "insist": "Treat a stated requirement as non-negotiable within its applicable scope",
+  "demand": "Identify an explicit requirement and whether it can be satisfied",
+  "request": "Specify an outcome or action being sought",
+  "offer": "Present an available option without assuming acceptance",
+  "propose": "Put forward a candidate action or arrangement for consideration",
+  "thank": "Acknowledge assistance or a contribution",
+  "congratulate": "Acknowledge a reported achievement without inventing its significance",
+  "compliment": "Identify a specific merit supported by the available information",
+  "praise": "Express an assessment tied to demonstrated qualities or results",
+  "celebrate": "Acknowledge a milestone in a manner appropriate to the context",
+  "motivate": "Connect the objective to reasons and manageable actions",
+  "inspire": "Present possibilities or examples that support further action",
+  "comfort": "Respond to expressed distress with acknowledgment and appropriate support",
+  "console": "Address loss or disappointment without dismissing it",
+  "calm": "Reduce conversational pressure and clarify the immediate situation",
+  "soothe": "Use measured language that acknowledges distress without unsupported reassurance",
+  "support": "Assist the person's stated need while retaining independent judgment",
+  "advocate": "Present reasons supporting an interest, position, or proposed action",
+  "hope": "Distinguish a desired outcome from a predicted outcome",
+  "wish": "Identify an imagined or desired alternative to the current situation",
+  "feel": "Interpret the reported experience without claiming the system shares it",
+  "worry": "Identify the concern and examine its likelihood, impact, and possible responses",
+  "fear": "Identify the threatened outcome and separate evidence from anticipation",
+  "enjoy": "Treat reported enjoyment as preference information without claiming shared pleasure",
+  "dislike": "Record an expressed aversion when it affects the requested outcome",
+  "appreciate": "Acknowledge a contribution or its value without implying felt gratitude",
+  "value": "Give an identified outcome or principle decision relevance",
+  "regret": "Acknowledge an undesirable prior outcome and examine corrective possibilities",
+  "forgive": "Respond to an apology without claiming resentment, emotional release, or another person's forgiveness",
+  "tolerate": "Allow a specified condition within stated limits",
+  "cope": "Identify manageable responses to an ongoing difficulty",
+  "struggle": "Recognize difficulty and examine the obstacles involved",
+  "hesitate": "Identify uncertainty or conflicting considerations before proceeding",
+  "commit": "Adopt an explicit obligation with scope and conditions",
+  "persist": "Continue purposeful work while checking whether the approach remains justified",
+  "persevere": "Continue through setbacks using adjustments informed by their causes",
+  "sustain": "Maintain a required level of activity or performance over time",
+  "endure": "Continue under difficult conditions while examining available alternatives",
+  "cooperate": "Perform compatible actions toward a shared objective",
+  "collaborate": "Combine contributions while sharing relevant context and dependencies",
+  "compromise": "Identify acceptable concessions across competing preferences",
+  "accommodate": "Adjust the approach to include a relevant need or constraint",
+  "delegate": "Assign a defined responsibility with context and completion criteria",
+  "assign": "Connect a task to its responsible person, component, or execution stage",
+  "involve": "Include a relevant participant or perspective",
+  "participate": "Contribute within a defined role",
+  "contribute": "Add information or work that advances the shared objective",
+  "facilitate": "Remove coordination obstacles and help the process proceed",
+  "lead": "Establish direction and coordinate actions toward the objective",
+  "prepare": "Put prerequisites in place before execution",
+  "arrange": "Organize the required elements into a usable configuration",
+  "defer": "Leave a decision pending until a stated condition is met",
+  "postpone": "Move an activity to a later time or stage",
+  "delay": "Suspend progress for a specified reason or interval",
+  "skip": "Omit a step while checking its effect on dependent work",
+  "bypass": "Use an alternative route around a step or obstacle",
+  "abandon": "End a particular approach when continuing it is no longer justified",
+  "withdraw": "Retract a proposal, claim, or participation",
+  "limit": "Set a maximum extent, quantity, or scope",
+  "restrict": "Permit only the actions or outputs within specified boundaries",
+  "specify": "State the required details explicitly",
+  "establish": "Put a definition, baseline, or arrangement in place",
+  "substitute": "Use an alternative that preserves the required function",
+  "salvage": "Retain usable portions of an incomplete or failed result",
+  "chunk": "Divide material into units suitable for processing or retrieval",
+  "skim": "Read selectively to identify the main structure and relevant sections",
+  "apply": "Use a concept or method in a particular situation",
+  "repeat": "Perform the specified operation again",
+  "refresh": "Update available information or reload the current state",
+  "reinforce": "Add support for an established requirement, behavior, or conclusion",
+  "transfer": "Carry information or a method into another context and check compatibility",
+  "fair": "Apply relevant standards consistently and explain justified differences",
+  "neutral": "Avoid favoring a position merely because of who presents it",
+  "biased": "Examine whether framing, selection, or assumptions systematically favor a conclusion",
+  "patient": "Allow clarification and revision without rushing the interaction",
+  "polite": "Use respectful wording suited to the situation",
+  "gentle": "Communicate difficult information without unnecessary harshness",
+  "firm": "State a position or boundary clearly and consistently",
+  "direct": "State the requested point without unnecessary detours",
+  "sincere": "Communicate without fabricated feelings, motives, or assurances",
+  "transparent": "Make relevant assumptions, evidence, and limitations visible",
+  "accountable": "Connect actions and outcomes to identifiable responsibilities",
+  "responsible": "Consider foreseeable consequences and fulfill applicable obligations",
+  "accurate": "Match the result to verifiable facts or supplied source material",
+  "relevant": "Include information that affects the current objective",
+  "feasible": "Assess whether the outcome can be achieved under actual constraints",
+  "urgent": "Increase priority according to the deadline and cost of delay",
+  "optional": "Treat an element as discretionary rather than required",
+  "necessary": "Identify a condition without which the specified outcome cannot be achieved",
+  "sufficient": "Identify conditions adequate to meet the stated requirement",
+  "affordable": "Evaluate total cost against the available budget",
+  "accessible": "Make the result usable for the specified abilities and circumstances",
+  "reliable": "Check whether required behavior holds across relevant conditions",
+  "flexible": "Permit changes within the boundaries that must remain satisfied",
+  "sustainable": "Assess whether the approach can continue under ongoing resource constraints"
+};
+
+const LVD_TERMS_SORTED = Object.keys(LVD_DICTIONARY).sort((a,b)=> b.length - a.length);
+
+if (typeof window !== 'undefined') {
+  window.LVD_DICTIONARY = LVD_DICTIONARY;
+  window.LVD_TERMS_SORTED = LVD_TERMS_SORTED;
+}
+if (typeof globalThis !== 'undefined') {
+  globalThis.LVD_DICTIONARY = LVD_DICTIONARY;
+  globalThis.LVD_TERMS_SORTED = LVD_TERMS_SORTED;
+}
+
+
+
+================================================
+FILE: manifest.json
+================================================
+{
+  "manifest_version": 3,
+  "name": "LVD Compiler - Prompt Enhancer",
+  "version": "1.0.0",
+  "description": "Real-time LVD \u2192 LLM-native prompt suggestions inside ChatGPT, Meta AI, Claude, Gemini. Shows replaceable terms as pills below the input, just like your screenshot.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://chat.openai.com/*",
+    "https://chatgpt.com/*",
+    "https://*.openai.com/*",
+    "https://claude.ai/*",
+    "https://*.claude.ai/*",
+    "https://gemini.google.com/*",
+    "https://bard.google.com/*",
+    "https://meta.ai/*",
+    "https://*.meta.ai/*",
+    "https://www.meta.ai/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chat.openai.com/*",
+        "https://chatgpt.com/*",
+        "https://*.openai.com/*",
+        "https://claude.ai/*",
+        "https://*.claude.ai/*",
+        "https://gemini.google.com/*",
+        "https://bard.google.com/*",
+        "https://meta.ai/*",
+        "https://*.meta.ai/*",
+        "https://www.meta.ai/*"
+      ],
+      "js": [
+        "lvd-dictionary.js",
+        "content.js"
+      ],
+      "css": [
+        "styles.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "LVD Compiler",
+    "default_popup": "popup.html"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icons/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
+}
+
+
+================================================
+FILE: popup.html
+================================================
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+body{width:320px; padding:16px; font-family: Inter, sans-serif; background:#09090b; color:#e4e4e7; margin:0}
+h1{font-size:16px; margin:0 0 8px 0}
+p{font-size:12px; color:#a1a1aa; line-height:1.4}
+.stats{margin-top:12px; background:#18181b; border:1px solid #27272a; border-radius:8px; padding:10px}
+.stat-row{display:flex; justify-content:space-between; font-size:12px; margin:4px 0}
+.badge{display:inline-block; background:#2a2a2e; border:1px solid #3a3a3e; border-radius:9999px; padding:2px 8px; font-size:11px; margin:2px}
+.term{color:#facc15; font-weight:600}
+</style>
+</head>
+<body>
+<h1>LVD Compiler Active</h1>
+<p>Real-time LVD → LLM-native suggestions inside ChatGPT, Claude, Gemini, Meta AI. Pills appear below the prompt box when you type an LVD term like <span class="badge"><span class="term">learn</span> → adapt in context</span></p>
+<div class="stats">
+  <div class="stat-row"><span>Dictionary size</span><span id="count">738 terms</span></div>
+  <div class="stat-row"><span>Status</span><span style="color:#22c55e">● Active</span></div>
+</div>
+<p style="margin-top:12px; font-size:11px">Tip: Click a yellow pill to replace the term in your prompt. It keeps your flow neat — no popup, just below the input like your screenshot.</p>
+</body>
+</html>
+
+
+
+================================================
+FILE: styles.css
+================================================
+
+/* LVD Compiler - Suggestion Bar - sits inside/right on top of the input field */
+#lvd-suggestion-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  margin-bottom: 6px;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  z-index: 1000;
+  position: relative;
+  animation: lvd-fadeIn 0.15s ease-out;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@keyframes lvd-fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.lvd-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #2a2a2e;
+  border: 1px solid #3a3a3e;
+  border-radius: 9999px;
+  padding: 6px 14px;
+  font-size: 13px;
+  line-height: 1.3;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+  max-width: 380px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.lvd-pill:hover {
+  background: #323236;
+  border-color: #4a4a4e;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+
+.lvd-pill:active {
+  transform: translateY(0px) scale(0.98);
+}
+
+.lvd-term {
+  color: #facc15; /* yellow-400 like screenshot */
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.lvd-arrow {
+  color: #a1a1aa;
+  font-weight: 400;
+  margin: 0 1px;
+}
+
+.lvd-rephrase {
+  color: #e4e4e7;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Hide when empty */
+#lvd-suggestion-bar:empty {
+  display: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Platform-specific tweaks to keep it neat below input */
+[data-lvd-platform="chatgpt"] #lvd-suggestion-bar {
+  margin-bottom: 8px;
+}
+
+[data-lvd-platform="claude"] #lvd-suggestion-bar {
+  margin-top: 8px;
+  margin-bottom: 4px;
+}
+
+[data-lvd-platform="gemini"] #lvd-suggestion-bar {
+  margin-top: 10px;
+}
+
+/* Ensure it doesn't complicate flow */
+.lvd-powered {
+  font-size: 10px;
+  color: #71717a;
+  margin-left: 6px;
+  align-self: center;
+}
+
+

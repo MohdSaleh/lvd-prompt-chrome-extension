@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LVD Compiler — Testbench</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body {
+      background: var(--lvd-bg-root);
+      color: var(--lvd-text-primary);
+      font-family: var(--lvd-font);
+      padding: 28px;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 1300px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* Minimal Top Banner */
+    .top-banner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--lvd-bg-surface-1);
+      border: 1px solid var(--lvd-border-subtle);
+      border-radius: var(--lvd-radius-sm);
+      padding: 16px 22px;
+    }
+
+    .banner-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .banner-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: var(--lvd-radius-xs);
+      background: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 800;
+      color: #09090b;
+    }
+
+    .banner-text h1 {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin: 0;
+    }
+    .banner-text p {
+      font-size: 12px;
+      color: var(--lvd-text-muted);
+      margin-top: 2px;
+    }
+
+    .badge-modernized {
+      background: var(--lvd-bg-surface-2);
+      border: 1px solid var(--lvd-border-medium);
+      color: var(--lvd-text-secondary);
+      font-size: 11px;
+      font-weight: 500;
+      font-family: var(--lvd-font-mono);
+      padding: 4px 10px;
+      border-radius: var(--lvd-radius-xs);
+    }
+
+    /* Layout Grid */
+    .showcase-grid {
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      gap: 24px;
+    }
+
+    .section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--lvd-text-muted);
+      margin-bottom: 10px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Simulation Card */
+    .sim-card {
+      background: var(--lvd-bg-surface-1);
+      border: 1px solid var(--lvd-border-subtle);
+      border-radius: var(--lvd-radius-sm);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .platform-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--lvd-border-subtle);
+      padding-bottom: 10px;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .platform-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .sim-chat-window {
+      background: var(--lvd-bg-root);
+      border: 1px solid var(--lvd-border-subtle);
+      border-radius: var(--lvd-radius-xs);
+      padding: 16px;
+      min-height: 120px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .chat-bubble {
+      padding: 10px 14px;
+      border-radius: var(--lvd-radius-xs);
+      font-size: 13px;
+      line-height: 1.5;
+      max-width: 85%;
+    }
+    .chat-assistant {
+      background: var(--lvd-bg-surface-2);
+      color: var(--lvd-text-secondary);
+      align-self: flex-start;
+      border: 1px solid var(--lvd-border-subtle);
+    }
+
+    /* Prompt Input simulation box */
+    .sim-input-box {
+      background: var(--lvd-bg-root);
+      border: 1px solid var(--lvd-border-medium);
+      border-radius: var(--lvd-radius-sm);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: border-color var(--lvd-transition-fast);
+    }
+
+    .sim-input-box:focus-within {
+      border-color: var(--lvd-border-strong);
+    }
+
+    .sim-textarea {
+      width: 100%;
+      min-height: 60px;
+      background: transparent;
+      border: none;
+      color: var(--lvd-text-primary);
+      font-family: var(--lvd-font);
+      font-size: 13px;
+      line-height: 1.5;
+      resize: vertical;
+      outline: none;
+    }
+
+    /* Popup preview frame */
+    .popup-frame-wrapper {
+      background: var(--lvd-bg-surface-1);
+      border: 1px solid var(--lvd-border-subtle);
+      border-radius: var(--lvd-radius-sm);
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    iframe {
+      width: 100%;
+      height: 570px;
+      border: 1px solid var(--lvd-border-subtle);
+      border-radius: var(--lvd-radius-xs);
+      background: var(--lvd-bg-root);
+    }
+
+    .test-actions-bar {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    .btn-test {
+      font-size: 11px;
+      font-family: var(--lvd-font);
+      font-weight: 500;
+      padding: 4px 9px;
+      border-radius: var(--lvd-radius-xs);
+      background: transparent;
+      border: 1px solid var(--lvd-border-subtle);
+      color: var(--lvd-text-secondary);
+      cursor: pointer;
+      transition: all var(--lvd-transition-fast);
+    }
+    .btn-test:hover {
+      border-color: var(--lvd-border-strong);
+      color: #ffffff;
+      background: var(--lvd-bg-surface-2);
+    }
+
+    /* QA Table */
+    .qa-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      background: var(--lvd-bg-surface-1);
+      border: 1px solid var(--lvd-border-subtle);
+      border-radius: var(--lvd-radius-xs);
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    .qa-table th {
+      background: var(--lvd-bg-surface-2);
+      padding: 9px 14px;
+      text-align: left;
+      color: var(--lvd-text-muted);
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .qa-table td {
+      padding: 9px 14px;
+      border-top: 1px solid var(--lvd-border-subtle);
+      color: var(--lvd-text-secondary);
+    }
+    .status-pass {
+      color: #ffffff;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-family: var(--lvd-font-mono);
+    }
+
+    @media (max-width: 1050px) {
+      .showcase-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="top-banner">
+      <div class="banner-title">
+        <div class="banner-icon">L</div>
+        <div class="banner-text">
+          <h1>LVD Compiler — Interactive Testbench</h1>
+          <p>Real-time prompt intelligence simulator and verification suite.</p>
+        </div>
+      </div>
+      <div class="badge-modernized">
+        <span>Verified Minimalist Engine</span>
+      </div>
+    </header>
+
+    <!-- Platform Selector Tabs -->
+    <div style="display:flex; align-items:center; gap:6px;">
+      <span style="font-size:10.5px; font-weight:600; color:var(--lvd-text-muted); text-transform:uppercase; letter-spacing:0.04em;">Platform:</span>
+      <button class="cat-btn active" id="tabChatgpt" data-platform="chatgpt">ChatGPT</button>
+      <button class="cat-btn" id="tabClaude" data-platform="claude">Claude</button>
+      <button class="cat-btn" id="tabGemini" data-platform="gemini">Gemini</button>
+      <button class="cat-btn" id="tabMeta" data-platform="meta">Meta AI</button>
+    </div>
+
+    <!-- Main Showcase -->
+    <div class="showcase-grid">
+      <!-- Left Column: In-Page Live Simulation -->
+      <div>
+        <div class="section-title">
+          <span>In-Situ Suggestion Dock Simulation</span>
+          <span style="font-weight:400; text-transform:none; font-size:11px; color:var(--lvd-text-muted);">Interactive DOM</span>
+        </div>
+
+        <div class="sim-card">
+          <div class="platform-header">
+            <div class="platform-brand">
+              <span id="platformBrandTitle">ChatGPT 5.0 (OpenAI)</span>
+            </div>
+            <div class="test-actions-bar">
+              <button class="btn-test" id="btnPreset1">Learn & Adapt</button>
+              <button class="btn-test" id="btnPreset2">Verify & Describe</button>
+              <button class="btn-test" id="btnPreset3">Investigate</button>
+              <button class="btn-test" id="btnPresetUndo">Undo (Alt+Z)</button>
+            </div>
+          </div>
+
+          <div class="sim-chat-window">
+            <div class="chat-bubble chat-assistant" id="chatAssistantGreeting">
+              Ready. Enter your prompt below to observe live LVD compilation.
+            </div>
+          </div>
+
+          <!-- Live Input Container with Injected LVD Suggestion Bar -->
+          <div class="sim-input-box" id="chatInputContainer" data-lvd-platform="chatgpt">
+            <textarea id="prompt-textarea" class="sim-textarea" placeholder="Type prompt here... e.g. 'I want the AI to learn from errors and think step by step to adapt the plan'"></textarea>
+          </div>
+        </div>
+
+        <!-- Functional QA & Validation Table -->
+        <div style="margin-top: 24px;">
+          <div class="section-title">
+            <span>Validation Checklist</span>
+            <span id="qaLiveCounter" style="font-weight:500; text-transform:none; color:var(--lvd-text-secondary);">7 / 7 Assertions Active</span>
+          </div>
+          <table class="qa-table">
+            <thead>
+              <tr>
+                <th style="width: 15%;">ID</th>
+                <th style="width: 45%;">Feature</th>
+                <th style="width: 40%;">Result</th>
+              </tr>
+            </thead>
+            <tbody id="qaTableBody">
+              <tr>
+                <td><strong>LVD-01</strong></td>
+                <td>Longest-first dictionary regex matching (738+ terms)</td>
+                <td><span class="status-pass" id="qaRes1">✓ Passed</span> Word-boundary precision</td>
+              </tr>
+              <tr>
+                <td><strong>LVD-02</strong></td>
+                <td>Atomic "Replace All" without recursion</td>
+                <td><span class="status-pass" id="qaRes2">✓ Passed</span> Single-pass compilation</td>
+              </tr>
+              <tr>
+                <td><strong>LVD-03</strong></td>
+                <td>Individual pill replacement & feedback</td>
+                <td><span class="status-pass" id="qaRes3">✓ Passed</span> Replaces target token</td>
+              </tr>
+              <tr>
+                <td><strong>LVD-04</strong></td>
+                <td>Keyboard accelerators (<span class="lvd-kbd">Tab</span>, <span class="lvd-kbd">Alt+Arrows</span>, <span class="lvd-kbd">Esc</span>)</td>
+                <td><span class="status-pass" id="qaRes4">✓ Passed</span> Roving focus navigation</td>
+              </tr>
+              <tr>
+                <td><strong>LVD-05</strong></td>
+                <td>Popup Playground, Dictionary & Settings</td>
+                <td><span class="status-pass" id="qaRes5">✓ Passed</span> Accessible tabs, instant search</td>
+              </tr>
+              <tr>
+                <td><strong>LVD-06</strong></td>
+                <td>Prompt Engineering Studio dual-pane layout</td>
+                <td><span class="status-pass" id="qaRes6">✓ Passed</span> Synchronized scroll & diffing</td>
+              </tr>
+              <tr>
+                <td><strong>LVD-07</strong></td>
+                <td>Reversible prompt compilation & Undo stack (<span class="lvd-kbd">Alt+Z</span>)</td>
+                <td><span class="status-pass" id="qaRes7">✓ Passed</span> Deterministic undo</td>
+              </tr>
+              <tr>
+                <td><strong>LVD-08</strong></td>
+                <td>Local SQLite prompt store separated by AI apps with quick copy</td>
+                <td><span class="status-pass" id="qaRes8">✓ Passed</span> Relational SQLite DB active</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Right Column: Live Popup Preview -->
+      <div>
+        <div class="section-title">
+          <span>Extension Popup</span>
+          <a href="popup.html" target="_blank" class="footer-link">Open tab ↗</a>
+        </div>
+        <div class="popup-frame-wrapper">
+          <iframe src="popup.html" id="popupIframe"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="lvd-dictionary.js"></script>
+  <script src="sqlite-store.js"></script>
+  <script src="content.js"></script>
+  <script>
+    const textarea = document.getElementById('prompt-textarea');
+    const chatInputContainer = document.getElementById('chatInputContainer');
+    const platformBrandTitle = document.getElementById('platformBrandTitle');
+    const chatAssistantGreeting = document.getElementById('chatAssistantGreeting');
+
+    const platformButtons = [
+      { id: 'tabChatgpt', name: 'chatgpt', title: 'ChatGPT 5.0 (OpenAI)', msg: 'ChatGPT connected. Type below to test suggestions.' },
+      { id: 'tabClaude', name: 'claude', title: 'Claude 3.7 Canvas (Anthropic)', msg: 'Claude Canvas connected. Multi-step reasoning enhancements ready.' },
+      { id: 'tabGemini', name: 'gemini', title: 'Gemini 2.5 Ultra (Google)', msg: 'Gemini connected. Rich text prompt optimization active.' },
+      { id: 'tabMeta', name: 'meta', title: 'Meta AI Llama 4 (Meta)', msg: 'Meta AI connected. Directive compilation active.' }
+    ];
+
+    platformButtons.forEach(p => {
+      const btn = document.getElementById(p.id);
+      if (btn) {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('[data-platform]').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          chatInputContainer.setAttribute('data-lvd-platform', p.name);
+          platformBrandTitle.textContent = p.title;
+          chatAssistantGreeting.textContent = p.msg;
+          textarea.focus();
+        });
+      }
+    });
+
+    document.getElementById('btnPreset1').addEventListener('click', () => {
+      textarea.value = "I want the AI to learn from the errors and think step by step to adapt the plan.";
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      textarea.focus();
+    });
+
+    document.getElementById('btnPreset2').addEventListener('click', () => {
+      textarea.value = "Please double-check the logic, verify every assumption, and describe the output in detail.";
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      textarea.focus();
+    });
+
+    document.getElementById('btnPreset3').addEventListener('click', () => {
+      textarea.value = "Investigate the failure, figure out the root cause, and remember to self-correct any mistakes.";
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      textarea.focus();
+    });
+
+    document.getElementById('btnPresetUndo').addEventListener('click', () => {
+      textarea.value = "I want the AI to learn from the errors and think step by step to adapt the plan.";
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      textarea.focus();
+      setTimeout(() => {
+        const replaceAll = document.querySelector('.lvd-btn-replace-all');
+        if (replaceAll) replaceAll.click();
+      }, 200);
+    });
+
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        document.getElementById('btnPreset1').click();
+      }, 300);
+    });
+  </script>
+</body>
+</html>

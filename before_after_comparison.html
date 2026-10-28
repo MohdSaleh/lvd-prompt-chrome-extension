@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LVD Compiler — Design Evolution Audit</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body {
+      background: var(--lvd-bg-root);
+      color: var(--lvd-text-primary);
+      font-family: var(--lvd-font);
+      padding: 32px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrapper {
+      max-width: 1300px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+    .header-banner {
+      background: var(--lvd-bg-surface-1);
+      border: 1px solid var(--lvd-border-subtle);
+      border-radius: var(--lvd-radius-sm);
+      padding: 20px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header-title h1 {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin: 0;
+    }
+    .header-title p {
+      color: var(--lvd-text-muted);
+      font-size: 12.5px;
+      margin: 3px 0 0 0;
+    }
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    .column-card {
+      background: var(--lvd-bg-surface-1);
+      border-radius: var(--lvd-radius-sm);
+      padding: 20px;
+      border: 1px solid var(--lvd-border-subtle);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .column-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--lvd-border-subtle);
+      padding-bottom: 10px;
+    }
+    .col-tag {
+      font-size: 10.5px;
+      font-weight: 600;
+      font-family: var(--lvd-font-mono);
+      padding: 2px 8px;
+      border-radius: var(--lvd-radius-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .tag-before {
+      background: rgba(244, 63, 94, 0.1);
+      color: var(--lvd-rose-light);
+      border: 1px solid rgba(244, 63, 94, 0.25);
+    }
+    .tag-after {
+      background: rgba(255, 255, 255, 0.08);
+      color: #ffffff;
+      border: 1px solid var(--lvd-border-medium);
+    }
+
+    .sub-section-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--lvd-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+
+    /* Legacy Preview */
+    .legacy-popup {
+      background: #09090b;
+      border: 1px solid #27272a;
+      border-radius: 6px;
+      padding: 14px;
+      color: #e4e4e7;
+    }
+    .legacy-popup h1 {
+      font-size: 14px;
+      margin: 0 0 6px 0;
+    }
+    .legacy-popup p {
+      font-size: 11.5px;
+      color: #a1a1aa;
+      line-height: 1.4;
+    }
+
+    /* Modern preview frame */
+    iframe {
+      border: 1px solid var(--lvd-border-subtle);
+      border-radius: var(--lvd-radius-xs);
+      width: 100%;
+      height: 560px;
+      background: var(--lvd-bg-root);
+    }
+
+    .feature-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--lvd-text-secondary);
+      list-style-type: none;
+      padding-left: 0;
+    }
+    .feature-list li {
+      padding-left: 14px;
+      position: relative;
+      line-height: 1.5;
+    }
+    .feature-list li::before {
+      content: "—";
+      position: absolute;
+      left: 0;
+      color: var(--lvd-text-dim);
+    }
+
+    @media (max-width: 1000px) {
+      .comparison-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header-banner">
+      <div class="header-title">
+        <h1>LVD Compiler — Design Evolution Audit</h1>
+        <p>Architectural contrast: Legacy Implementation vs Quiet Minimalist Monochromatic System</p>
+      </div>
+      <div>
+        <span class="lvd-badge">Minimalist Core</span>
+      </div>
+    </div>
+
+    <div class="comparison-grid">
+      <!-- BEFORE COLUMN -->
+      <div class="column-card">
+        <div class="column-header">
+          <span style="font-size:14px; font-weight:600;">Legacy Implementation</span>
+          <span class="col-tag tag-before">Legacy</span>
+        </div>
+
+        <div>
+          <div class="sub-section-title">Original Static View</div>
+          <div class="legacy-popup">
+            <h1>LVD Compiler Active</h1>
+            <p>Real-time suggestions inside ChatGPT, Claude, Gemini, Meta AI. Pills appear below the prompt input without controls or telemetry.</p>
+          </div>
+        </div>
+
+        <div>
+          <div class="sub-section-title">Usability & Ergonomic Deficits</div>
+          <ul class="feature-list">
+            <li><strong>Recursive Mutation:</strong> In sequential replacement, sub-tokens corrupted already replaced sentences.</li>
+            <li><strong>Static Interface:</strong> Popup lacked playground, instant dictionary lookup, or custom rule controls.</li>
+            <li><strong>Restricted Editor:</strong> Legacy options editor was locked to a 220px fixed textarea.</li>
+            <li><strong>Low Contrast:</strong> Failed WCAG accessibility guidelines with low text contrast.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- AFTER COLUMN -->
+      <div class="column-card">
+        <div class="column-header">
+          <span style="font-size:14px; font-weight:600;">Quiet Minimalist System Design</span>
+          <span class="col-tag tag-after">Minimalist</span>
+        </div>
+
+        <div>
+          <div class="sub-section-title">Modernized Popup (Live Frame)</div>
+          <iframe src="popup.html"></iframe>
+        </div>
+
+        <div>
+          <div class="sub-section-title">Minimalist Architectural Principles</div>
+          <ul class="feature-list">
+            <li><strong>Single-Pass Non-Recursive Compiler:</strong> Range-based mathematical replacement guarantees zero corruption.</li>
+            <li><strong>Quiet Monochromatic Palette:</strong> Pure neutral zinc and obsidian without colored visual clutter or tacky gradients.</li>
+            <li><strong>Sleek Architectural Split Workbench:</strong> Synchronized dual-pane editor with live token estimation.</li>
+            <li><strong>Subtle Micro-Interactions:</strong> Clean pill roving navigation (<span class="lvd-kbd">Tab</span>, <span class="lvd-kbd">Alt+Arrows</span>) and reversible undo (<span class="lvd-kbd">Alt+Z</span>).</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

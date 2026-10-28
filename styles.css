@@ -1,0 +1,788 @@
+/* ==========================================================================
+   LVD COMPILER — RADICAL MINIMALIST SYSTEM DESIGN (2027)
+   Architectural Serenity • Form Follows Function • Pure Typography & Alignment
+   Dieter Rams Inspired Restraint • Zero Visual Noise
+   ========================================================================== */
+
+:root {
+  /* ========================================================================
+     1. Monochromatic Serene Surface Palette (Warm Obsidian & Slate)
+     ======================================================================== */
+  --lvd-bg-root: #0d0e12;
+  --lvd-bg-subtle: #121318;
+  --lvd-bg-surface-1: #16171f;
+  --lvd-bg-surface-2: #1c1e27;
+  --lvd-bg-surface-3: #232531;
+  --lvd-bg-surface-hover: #21232d;
+  --lvd-bg-surface-active: #292b37;
+
+  /* Frosted Glass Layers */
+  --lvd-glass-surface: rgba(16, 17, 23, 0.88);
+  --lvd-glass-elevated: rgba(22, 23, 31, 0.94);
+  --lvd-glass-blur: blur(20px);
+
+  /* Hairline Borders — Whisper quiet, never heavy */
+  --lvd-border-subtle: rgba(255, 255, 255, 0.05);
+  --lvd-border-medium: rgba(255, 255, 255, 0.09);
+  --lvd-border-strong: rgba(255, 255, 255, 0.16);
+  --lvd-border-amber: rgba(255, 255, 255, 0.20);
+  --lvd-border-emerald: rgba(255, 255, 255, 0.20);
+  --lvd-specular-top: none;
+  --lvd-specular-rim: 0 0 0 1px rgba(255, 255, 255, 0.06);
+
+  /* ========================================================================
+     2. Restrained Monochromatic Tone Tokens (Strict Minimalist Invariance)
+     ======================================================================== */
+  --lvd-amber: #ffffff;
+  --lvd-amber-light: #f4f4f5;
+  --lvd-amber-soft: rgba(255, 255, 255, 0.06);
+  --lvd-amber-glow: none;
+  --lvd-amber-halo: none;
+
+  --lvd-emerald: #e4e4e7;
+  --lvd-emerald-light: #f4f4f5;
+  --lvd-emerald-soft: rgba(255, 255, 255, 0.06);
+  --lvd-emerald-glow: none;
+
+  --lvd-indigo: #d4d4d8;
+  --lvd-indigo-light: #e4e4e7;
+  --lvd-indigo-soft: rgba(255, 255, 255, 0.05);
+
+  --lvd-cyan: #d4d4d8;
+  --lvd-cyan-light: #e4e4e7;
+  --lvd-cyan-soft: rgba(255, 255, 255, 0.05);
+
+  --lvd-rose: #ef4444;
+  --lvd-rose-light: #f87171;
+  --lvd-rose-soft: rgba(239, 68, 68, 0.1);
+
+  /* High-legibility Typography Hierarchy */
+  --lvd-text-primary: #f2f3f5;
+  --lvd-text-secondary: #9296a0;
+  --lvd-text-muted: #5e626e;
+  --lvd-text-dim: #41454f;
+  --lvd-text-amber: #ffffff;
+  --lvd-text-emerald: #f2f3f5;
+
+  /* ========================================================================
+     3. Subtle Elevation (Diffused, zero neon halos)
+     ======================================================================== */
+  --lvd-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --lvd-shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --lvd-shadow-md: 0 6px 18px rgba(0, 0, 0, 0.5);
+  --lvd-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
+  --lvd-shadow-dock: 0 8px 30px rgba(0, 0, 0, 0.55);
+  --lvd-shadow-floating: 0 12px 32px rgba(0, 0, 0, 0.65);
+
+  /* ========================================================================
+     4. Geometry & Radii
+     ======================================================================== */
+  --lvd-radius-xs: 3px;
+  --lvd-radius-sm: 6px;
+  --lvd-radius-md: 8px;
+  --lvd-radius-lg: 12px;
+  --lvd-radius-xl: 16px;
+  --lvd-radius-full: 9999px;
+
+  /* ========================================================================
+     5. Typography System
+     ======================================================================== */
+  --lvd-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Inter", Helvetica, sans-serif;
+  --lvd-font-mono: "SF Mono", "JetBrains Mono", Menlo, Monaco, Consolas, monospace;
+
+  /* ========================================================================
+     6. Micro-Motion
+     ======================================================================== */
+  --lvd-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --lvd-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --lvd-transition-fast: 0.12s var(--lvd-ease-out);
+  --lvd-transition-normal: 0.18s var(--lvd-ease-out);
+}
+
+/* Base Resets */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--lvd-bg-root);
+  color: var(--lvd-text-primary);
+  font-family: var(--lvd-font);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Minimalist Scrollbars */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* ==========================================================================
+   MINIMALIST BUTTON PRIMITIVES
+   Clean, tactile, refined, zero decorative fluff
+   ========================================================================== */
+
+.lvd-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: #f2f3f5;
+  color: #0d0e12;
+  font-family: var(--lvd-font);
+  font-weight: 550;
+  font-size: 12px;
+  letter-spacing: -0.01em;
+  padding: 6px 12px;
+  border-radius: var(--lvd-radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: all var(--lvd-transition-fast);
+  text-decoration: none;
+  user-select: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  outline: none;
+}
+
+.lvd-btn-primary:hover {
+  background: #ffffff;
+  color: #000000;
+  transform: translateY(-0.5px);
+}
+
+.lvd-btn-primary:active {
+  transform: translateY(0);
+  background: #d4d4d8;
+}
+
+.lvd-btn-primary:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+.lvd-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid var(--lvd-border-medium);
+  color: var(--lvd-text-primary);
+  font-family: var(--lvd-font);
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: -0.01em;
+  padding: 6px 12px;
+  border-radius: var(--lvd-radius-sm);
+  cursor: pointer;
+  transition: all var(--lvd-transition-fast);
+  user-select: none;
+  outline: none;
+}
+
+.lvd-btn-secondary:hover {
+  background: var(--lvd-bg-surface-2);
+  border-color: var(--lvd-border-strong);
+  color: #ffffff;
+}
+
+.lvd-btn-secondary:active {
+  background: var(--lvd-bg-surface-3);
+}
+
+.lvd-btn-secondary:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 1px;
+}
+
+.lvd-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--lvd-text-secondary);
+  font-family: var(--lvd-font);
+  font-weight: 500;
+  font-size: 11.5px;
+  padding: 4px 8px;
+  border-radius: var(--lvd-radius-xs);
+  cursor: pointer;
+  transition: all var(--lvd-transition-fast);
+  outline: none;
+}
+
+.lvd-btn-ghost:hover {
+  background: var(--lvd-bg-surface-2);
+  color: var(--lvd-text-primary);
+}
+
+/* Minimal Badges */
+.lvd-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1.5px 6px;
+  border-radius: var(--lvd-radius-xs);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  font-family: var(--lvd-font-mono);
+  background: var(--lvd-bg-surface-2);
+  color: var(--lvd-text-secondary);
+  border: 1px solid var(--lvd-border-subtle);
+}
+
+.lvd-badge-amber,
+.lvd-badge-emerald,
+.lvd-badge-indigo,
+.lvd-badge-cyan {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--lvd-text-primary);
+  border: 1px solid var(--lvd-border-subtle);
+}
+
+.lvd-badge-rose {
+  background: rgba(239, 68, 68, 0.08);
+  color: var(--lvd-rose-light);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* ==========================================================================
+   MINIMALIST SEGMENTED CONTROL
+   Smooth Apple / Linear style slider switcher
+   ========================================================================== */
+
+.lvd-segmented-control {
+  display: inline-flex;
+  align-items: center;
+  background: var(--lvd-bg-surface-1);
+  border: 1px solid var(--lvd-border-subtle);
+  border-radius: var(--lvd-radius-sm);
+  padding: 2px;
+  gap: 2px;
+}
+
+.lvd-segmented-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--lvd-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all var(--lvd-transition-fast);
+  outline: none;
+  user-select: none;
+}
+
+.lvd-segmented-item:hover {
+  color: var(--lvd-text-primary);
+}
+
+.lvd-segmented-item.active {
+  background: var(--lvd-bg-surface-3);
+  color: #ffffff;
+  font-weight: 550;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* ==========================================================================
+   MINIMALIST TOGGLE SWITCH
+   ========================================================================== */
+
+.lvd-switch {
+  position: relative;
+  display: inline-block;
+  width: 30px;
+  height: 17px;
+  flex-shrink: 0;
+}
+
+.lvd-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.lvd-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: var(--lvd-bg-surface-2);
+  border: 1px solid var(--lvd-border-medium);
+  transition: all var(--lvd-transition-fast);
+  border-radius: var(--lvd-radius-full);
+}
+
+.lvd-slider::before {
+  position: absolute;
+  content: "";
+  height: 11px;
+  width: 11px;
+  left: 2px;
+  bottom: 2px;
+  background: #71717a;
+  transition: transform var(--lvd-transition-fast), background var(--lvd-transition-fast);
+  border-radius: 50%;
+}
+
+.lvd-switch input:checked + .lvd-slider {
+  background-color: #27272a;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.lvd-switch input:checked + .lvd-slider::before {
+  transform: translateX(13px);
+  background: #ffffff;
+}
+
+.lvd-switch input:focus-visible + .lvd-slider {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   NATURAL EDITORIAL DIFF HIGHLIGHTING
+   Subtle text emphasis without bulky box frames
+   ========================================================================== */
+
+mark.lvd-highlight-diff,
+.diff-body mark,
+.studio-preview mark {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+  border-bottom: 1.5px solid rgba(255, 255, 255, 0.45);
+  border-radius: 2px;
+  padding: 0 3px;
+  font-weight: 500;
+  display: inline;
+  text-decoration: none;
+  transition: background var(--lvd-transition-fast);
+}
+
+mark.lvd-highlight-diff:hover,
+.diff-body mark:hover,
+.studio-preview mark:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-bottom-color: #ffffff;
+}
+
+/* ==========================================================================
+   MINIMALIST IN-SITU SUGGESTION DOCK (#lvd-suggestion-bar)
+   Quiet, low-profile companion injected inside AI chats
+   ========================================================================== */
+
+#lvd-suggestion-bar,
+#lvd-suggestion-bar * {
+  box-sizing: border-box !important;
+  font-family: var(--lvd-font) !important;
+  -webkit-font-smoothing: antialiased;
+}
+
+#lvd-suggestion-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  width: 100%;
+  max-width: 100%;
+  background: var(--lvd-bg-subtle);
+  border: 1px solid var(--lvd-border-medium);
+  border-radius: var(--lvd-radius-sm);
+  box-shadow: var(--lvd-shadow-dock);
+  position: relative;
+  z-index: 9999;
+  animation: lvdFadeIn 0.14s var(--lvd-ease-out);
+}
+
+@keyframes lvdFadeIn {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+#lvd-suggestion-bar:empty {
+  display: none !important;
+  padding: 0;
+  margin: 0;
+  border: none;
+}
+
+.lvd-bar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--lvd-border-subtle);
+  user-select: none;
+}
+
+.lvd-bar-title-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lvd-bar-logo-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 3px;
+  background: #ffffff;
+  color: #0d0e12;
+  font-size: 9.5px;
+  font-weight: 700;
+}
+
+.lvd-bar-title {
+  font-size: 11.5px;
+  font-weight: 550;
+  letter-spacing: -0.01em;
+  color: var(--lvd-text-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lvd-badge-count {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--lvd-border-subtle);
+  color: var(--lvd-text-secondary);
+  font-size: 9.5px;
+  font-weight: 500;
+  font-family: var(--lvd-font-mono);
+}
+
+.lvd-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lvd-btn-replace-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--lvd-radius-xs);
+  background: #f2f3f5;
+  border: 1px solid #ffffff;
+  color: #0d0e12;
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--lvd-transition-fast);
+  outline: none;
+}
+
+.lvd-btn-replace-all:hover {
+  background: #ffffff;
+}
+
+.lvd-btn-undo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border-radius: var(--lvd-radius-xs);
+  background: transparent;
+  border: 1px solid var(--lvd-border-medium);
+  color: var(--lvd-text-secondary);
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--lvd-transition-fast);
+  outline: none;
+}
+
+.lvd-btn-undo:hover {
+  border-color: var(--lvd-border-strong);
+  color: #ffffff;
+  background: var(--lvd-bg-surface-1);
+}
+
+.lvd-key-hint {
+  font-size: 10px;
+  color: var(--lvd-text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.lvd-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--lvd-bg-surface-1);
+  border: 1px solid var(--lvd-border-subtle);
+  border-radius: 3px;
+  padding: 0 4px;
+  font-family: var(--lvd-font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--lvd-text-muted);
+}
+
+.lvd-btn-dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 3px;
+  background: transparent;
+  border: none;
+  color: var(--lvd-text-muted);
+  cursor: pointer;
+  transition: all var(--lvd-transition-fast);
+  font-size: 11px;
+}
+
+.lvd-btn-dismiss:hover {
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   MINIMALIST PILLS / SUGGESTIONS
+   ========================================================================== */
+
+.lvd-pills-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  max-height: 130px;
+  overflow-y: auto;
+}
+
+.lvd-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--lvd-bg-surface-1);
+  border: 1px solid var(--lvd-border-subtle);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--lvd-text-primary);
+  cursor: pointer;
+  user-select: none;
+  transition: all var(--lvd-transition-fast);
+  max-width: 440px;
+  outline: none;
+  text-align: left;
+}
+
+.lvd-pill:hover {
+  background: var(--lvd-bg-surface-2);
+  border-color: var(--lvd-border-medium);
+}
+
+.lvd-pill:focus-visible,
+.lvd-pill.lvd-pill-active {
+  border-color: rgba(255, 255, 255, 0.4);
+  background: var(--lvd-bg-surface-2);
+}
+
+.lvd-cat-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: #71717a;
+}
+
+.lvd-term-chip {
+  display: inline-flex;
+  align-items: center;
+  color: #f2f3f5;
+  font-weight: 550;
+  font-size: 11.5px;
+}
+
+.lvd-arrow {
+  color: var(--lvd-text-dim);
+  font-weight: 400;
+  font-size: 10px;
+}
+
+.lvd-rephrase {
+  color: var(--lvd-text-secondary);
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lvd-pill:hover .lvd-rephrase {
+  color: #ffffff;
+}
+
+.lvd-pill.lvd-replaced {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: var(--lvd-text-secondary) !important;
+  pointer-events: none;
+}
+
+/* Tooltip */
+[data-lvd-tooltip] {
+  position: relative;
+}
+
+[data-lvd-tooltip]:hover::after {
+  content: attr(data-lvd-tooltip);
+  position: absolute;
+  bottom: calc(100% + 5px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--lvd-bg-surface-3);
+  border: 1px solid var(--lvd-border-medium);
+  color: #ffffff;
+  font-size: 10.5px;
+  font-weight: 400;
+  padding: 3px 7px;
+  border-radius: var(--lvd-radius-xs);
+  white-space: nowrap;
+  z-index: 10000;
+  pointer-events: none;
+  box-shadow: var(--lvd-shadow-sm);
+}
+
+/* Host Platform Margins */
+[data-lvd-platform="chatgpt"] #lvd-suggestion-bar { margin-bottom: 8px; }
+[data-lvd-platform="claude"] #lvd-suggestion-bar { margin-top: 6px; margin-bottom: 8px; }
+[data-lvd-platform="gemini"] #lvd-suggestion-bar { margin-top: 6px; margin-bottom: 8px; }
+[data-lvd-platform="meta"] #lvd-suggestion-bar { margin-bottom: 8px; }
+
+@media (max-width: 600px) {
+  #lvd-suggestion-bar { padding: 6px 8px; }
+  .lvd-pill { max-width: 100%; font-size: 11px; padding: 3px 6px; }
+  .lvd-key-hint { display: none; }
+}
+
+/* ==========================================================================
+   MINIMALIST PROMPT VAULT (SQLite) COMPONENTS
+   ========================================================================== */
+.vault-prompt-card {
+  background: var(--lvd-bg-surface-1);
+  border: 1px solid var(--lvd-border-subtle);
+  border-radius: var(--lvd-radius-xs);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color var(--lvd-transition-fast), background var(--lvd-transition-fast);
+}
+
+.vault-prompt-card:hover {
+  border-color: var(--lvd-border-medium);
+  background: var(--lvd-bg-surface-2);
+}
+
+.vault-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.vault-time {
+  font-size: 10px;
+  color: var(--lvd-text-muted);
+  font-family: var(--lvd-font-mono);
+}
+
+.vault-meta {
+  font-size: 9.5px;
+  color: var(--lvd-text-dim);
+  font-family: var(--lvd-font-mono);
+}
+
+.vault-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-vault-action {
+  background: transparent;
+  border: 1px solid var(--lvd-border-subtle);
+  color: var(--lvd-text-secondary);
+  font-family: var(--lvd-font);
+  font-size: 10.5px;
+  padding: 2.5px 7px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all var(--lvd-transition-fast);
+  outline: none;
+}
+
+.btn-vault-action:hover {
+  border-color: var(--lvd-border-medium);
+  color: #ffffff;
+  background: var(--lvd-bg-surface-3);
+}
+
+.btn-vault-copy:active {
+  background: #ffffff;
+  color: #0d0e12;
+}
+
+.btn-vault-delete:hover {
+  border-color: rgba(239, 68, 68, 0.4);
+  color: var(--lvd-rose-light);
+}
+
+.vault-prompt-text {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--lvd-text-primary);
+  word-break: break-word;
+  user-select: text;
+}
+
+.vault-compiled-preview {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--lvd-text-secondary);
+  padding: 6px 8px;
+  background: var(--lvd-bg-subtle);
+  border-radius: 3px;
+  border-left: 2px solid rgba(255, 255, 255, 0.2);
+  word-break: break-word;
+  user-select: text;
+}
+
+.platform-badge-chatgpt { background: rgba(16, 185, 129, 0.1); color: #34d399; }
+.platform-badge-claude { background: rgba(245, 158, 11, 0.1); color: #fbbf24; }
+.platform-badge-gemini { background: rgba(59, 130, 246, 0.1); color: #60a5fa; }
+.platform-badge-meta { background: rgba(139, 92, 246, 0.1); color: #a78bfa; }
+

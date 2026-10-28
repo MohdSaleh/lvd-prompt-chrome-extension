@@ -1,0 +1,14 @@
+# macOS / OS files
+.DS_Store
+Thumbs.db
+
+# Agent and UI/UX workspace artifacts
+.agents/
+.uiux-redesign/
+.uiux*
+
+# Dependencies and logs
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
