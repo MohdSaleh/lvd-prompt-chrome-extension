@@ -6,6 +6,7 @@ Thumbs.db
 .agents/
 .uiux-redesign/
 .uiux*
+digest.txt
 
 # Dependencies and logs
 node_modules/
